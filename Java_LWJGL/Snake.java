@@ -2,6 +2,7 @@ import org.lwjgl.*;
 import org.lwjgl.glfw.*;
 import org.lwjgl.opengl.*;
 import org.lwjgl.system.*;
+import org.lwjgl.openal.*;
 
 import java.nio.*;
 import java.util.*;
@@ -12,6 +13,9 @@ import static org.lwjgl.opengl.GL11.*;
 import static org.lwjgl.system.MemoryStack.*;
 import static org.lwjgl.system.MemoryUtil.*;
 import static org.lwjgl.stb.STBImage.stbi_load;
+import static org.lwjgl.openal.AL10.*;
+import static org.lwjgl.openal.ALC11.*;
+
 
 public class Snake {
     public static final int WINDOW_WIDTH = 1200, WINDOW_HEIGHT = 800;
@@ -31,6 +35,7 @@ public class Snake {
 
     public static final Map<String, int[]> IMG_RC;
     static {
+        
         IMG_RC = new HashMap<>();
         int i = 0;
         for(String[] names_row : IMG_NAMES) {
@@ -134,6 +139,7 @@ public class Snake {
     private static final HashSet<Map.Entry<Integer, Integer>> set_all_squares;
     static {
         set_all_squares = new HashSet<Map.Entry<Integer, Integer>>();
+
         for(int i=0; i<ROWS; i++) {
             for(int j=0; j<COLUMNS; j++) {
                 set_all_squares.add(Map.entry(i, j));
@@ -296,12 +302,7 @@ public class Snake {
     void place_rabbit()
     {
         HashSet<Map.Entry<Integer, Integer>> free_squares = (HashSet)set_all_squares.clone();
-        
-        System.out.println(free_squares.size());
-        
         snake.forEach((sp) -> free_squares.remove(Map.entry(sp.row, sp.col)));
-
-        System.out.println(free_squares.size());
         
         if(free_squares.size() == 0) {
             System.out.println("victory !!!");
@@ -310,9 +311,7 @@ public class Snake {
         } else {
             ArrayList<int[]> free_squares_array = new ArrayList<int[]>();
             free_squares.forEach((fs) -> free_squares_array.add(new int[]{fs.getKey(), fs.getValue()}));
-            free_squares.iterator();
             int i = rnd_generator.nextInt(free_squares.size());
-
             int[] rc = free_squares_array.get(i);
             rabbit.move(rc[0], rc[1]);
         }
@@ -461,6 +460,11 @@ public class Snake {
     }
 
     public static void main(String[] args) {
+        long device = alcOpenDevice(args.length == 0 ? null : args[0]);
+        if (device == NULL) {
+            throw new IllegalStateException("Failed to open an OpenAL device.");
+        }
+                
         new Snake().run();
     }
 
