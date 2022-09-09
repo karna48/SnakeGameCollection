@@ -35,7 +35,7 @@ const std::vector<std::vector<std::string>> IMG_NAMES{
     {"tail_up", "tail_right", "tail_down", "tail_left"},
     {"turn_1", "turn_2", "turn_3", "turn_4"},
     {"vertical", "horizontal", "rabbit", "grass"}
-};    
+};
 
 void setup_opengl( int width, int height );
 
@@ -121,9 +121,9 @@ struct Rabbit
         sprite.move(row, col);
     }
 };
+
 class SnakeGame
 {
-    std::unordered_map<std::string, GLuint> textures;
     std::vector<SnakePart> snake;
     std::vector<Sprite> background;
 
@@ -132,10 +132,13 @@ class SnakeGame
     std::string snake_dir_next;
     Rabbit rabbit;
 
+    AudioSystem &audio_system;
+
     std::default_random_engine rnd_generator;
 public:
-    SnakeGame():
+    SnakeGame(AudioSystem &audio_system):
         rabbit(0, 0),
+        audio_system(audio_system),
         rnd_generator(std::chrono::high_resolution_clock::now().time_since_epoch().count())
     {
 
@@ -186,7 +189,7 @@ public:
         int i=0;
         int row = ROWS / 3, col = COLUMNS / 3;
         for(auto const& name : {"head_right", "horizontal", "tail_right"}) {
-            snake.push_back(SnakePart(row, col-i, "right", name));
+            snake.push_back(SnakePart(row, col-i, DIR_RIGHT, name));
             i++;
         }
         snake_move_t = 0.2;
@@ -209,7 +212,7 @@ public:
             part.sprite.draw();
         }
     }
-    void update(float dt, AudioSystem &audio_system)
+    void update(float dt)
     {
         snake_move_t_rem -= dt;
         if(snake_move_t_rem <= 0) {
@@ -223,8 +226,7 @@ public:
                 col++;
             } else if(head_dir == DIR_UP) {
                 row++;
-            }
-             else if(head_dir == DIR_DOWN) {
+            }else if(head_dir == DIR_DOWN) {
                 row--;
             }
             row %= ROWS;
@@ -379,7 +381,7 @@ int main(/*int argc, char *argv[]*/)
 
     { // game and audio system scope
         AudioSystem audio_system;
-        SnakeGame snake_game;
+        SnakeGame snake_game(audio_system);
         Uint32 last_ticks = SDL_GetTicks();
         bool done = false;
         while(!done) {
@@ -409,10 +411,16 @@ int main(/*int argc, char *argv[]*/)
             }
 
             Uint32 now_ticks = SDL_GetTicks();
-            float dt = SDL_TICKS_PASSED(last_ticks, now_ticks) / 1000.0f;
+            float dt = (now_ticks-last_ticks) / 1000.0f;
+            if(now_ticks < last_ticks) {
+                // rollover detection, dt is bad
+                Uint32 ticks_repaired = now_ticks + (4294967295 - last_ticks);
+                dt = ticks_repaired / 1000.0f;
+            }
+            
             last_ticks = now_ticks;
 
-            snake_game.update(dt, audio_system);
+            snake_game.update(dt);
 
             snake_game.draw();
             SDL_GL_SwapWindow(window);
