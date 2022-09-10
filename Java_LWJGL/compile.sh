@@ -1,1 +1,1 @@
-javac -cp lwjgl/\* Snake.java
+javac -cp lwjgl/\* -Xlint Snake.java

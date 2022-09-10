@@ -2,8 +2,10 @@ import org.lwjgl.*;
 import org.lwjgl.glfw.*;
 import org.lwjgl.opengl.*;
 import org.lwjgl.system.*;
-import org.lwjgl.openal.*;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.Clip;
 
+import java.io.File;
 import java.nio.*;
 import java.util.*;
 
@@ -13,8 +15,7 @@ import static org.lwjgl.opengl.GL11.*;
 import static org.lwjgl.system.MemoryStack.*;
 import static org.lwjgl.system.MemoryUtil.*;
 import static org.lwjgl.stb.STBImage.stbi_load;
-import static org.lwjgl.openal.AL10.*;
-import static org.lwjgl.openal.ALC11.*;
+
 
 
 public class Snake {
@@ -135,6 +136,7 @@ public class Snake {
     private float snake_move_t, snake_move_t_rem;
 
     private Random rnd_generator;
+    private Clip eat_sound, die_sound;
 
     private static final HashSet<Map.Entry<Integer, Integer>> set_all_squares;
     static {
@@ -148,7 +150,7 @@ public class Snake {
     }
     
 
-    public void run() {
+    public void run() throws Exception {
         System.out.println("LWJGL version:" + Version.getVersion());
 
         init();
@@ -199,12 +201,12 @@ public class Snake {
         }
     }
 
-    private void init() {
+    private void init() throws Exception {
         System.out.println("IMG_RC:");
         for(Map.Entry<String, int[]> rc : IMG_RC.entrySet()) {
-            System.out.println(
+            System.out.print(
                 "   " + rc.getKey() + 
-                ": " + rc.getValue()[0] + ", " + rc.getValue()[1]);
+                ": " + rc.getValue()[0] + ", " + rc.getValue()[1] + "; ");
         }
 
         rnd_generator = new Random();
@@ -284,6 +286,8 @@ public class Snake {
 
         rabbit = new Rabbit(0, 0);
         place_rabbit();
+
+        load_sounds();
     }
 
     void reset_snake()
@@ -301,6 +305,8 @@ public class Snake {
 
     void place_rabbit()
     {
+        // warning: [unchecked] unchecked cast;
+        // but we actually know set_all_squares this HashSet and therefore its clone
         HashSet<Map.Entry<Integer, Integer>> free_squares = (HashSet)set_all_squares.clone();
         snake.forEach((sp) -> free_squares.remove(Map.entry(sp.row, sp.col)));
         
@@ -388,7 +394,7 @@ public class Snake {
                 String dir = (snake.get(snake.size()-2)).dir;
                 snake.get(snake.size()-1).sprite.set_image("tail_"+dir);
             } else {
-                //audio_system.play_eat();
+                eat_sound.start();
                 place_rabbit();
             }            
 
@@ -397,7 +403,7 @@ public class Snake {
             while(spIt.hasNext()) {
                 SnakePart sp = spIt.next();
                 if(sp.col == col && sp.row == row) {
-                    //audio_system.play_die();
+                    die_sound.start();
                     reset_snake();
                     place_rabbit();
                     break;
@@ -459,13 +465,20 @@ public class Snake {
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width.get(0), height.get(0), 0, GL_RGBA, GL_UNSIGNED_BYTE, image);
     }
 
+    private void load_sounds() throws Exception
+    {
+        eat_sound = AudioSystem.getClip();
+        die_sound = AudioSystem.getClip();
+        eat_sound.open(AudioSystem.getAudioInputStream(new File("../common_data/eat.wav")));
+        die_sound.open(AudioSystem.getAudioInputStream(new File("../common_data/die.wav")));
+    }
+
     public static void main(String[] args) {
-        long device = alcOpenDevice(args.length == 0 ? null : args[0]);
-        if (device == NULL) {
-            throw new IllegalStateException("Failed to open an OpenAL device.");
+        try {
+            new Snake().run();
+        } catch(Exception e) {
+            System.out.println("Exception: " + e);
         }
-                
-        new Snake().run();
     }
 
 }
