@@ -24,6 +24,7 @@ classdef snake < handle
         move_t_rem   %double
         A_set        %int32  % set of all squares [row, col; ...]
         window_size
+        dt_history
     end
 
     % Component initialization
@@ -35,18 +36,16 @@ classdef snake < handle
 
             app.window_size = [1200, 800];
 
-            app.myfigure = figure();
-
-            set(app.myfigure,
+            app.myfigure = figure(
                 'Position', border_width + [0, 0, border_width+window_size],
                 'Name', 'Snake game (Octave)',
                 'Color', [0.75, 0.75, 1],
                 'KeyPressFcn', @app.keyPressed);
 
-            app.myaxes = axes(app.myfigure)
-                %'Position', [0, 0, window_size],
-                %'XColor', 'none',
-                %'YColor', 'none');
+            app.myaxes = axes(
+                app.myfigure,
+                'XColor', 'none',
+                'YColor', 'none');
 
             %app.myaxes.Toolbar.Visible = 'off';
 
@@ -57,9 +56,11 @@ classdef snake < handle
         end
 
         function update_labels(app)
-            %fps = 1 / app.update_timer.InstantPeriod;
-            fps = 1/60;
-            set(app.FPS_label, 'String', sprintf('FPS: %.2f', fps));
+            if(~isempty(app.dt_history))
+                app.dt_history
+                fps = 1/mean(app.dt_history);
+                set(app.FPS_label, 'String', sprintf('FPS: %.2f', fps));
+            end
             set(app.length_label, 'String', sprintf('Length: %i', length(app.parts)));
         end
     end
@@ -82,8 +83,6 @@ classdef snake < handle
                 end
             end
 
-            app.A_set
-
             % get focus
             figure(app.myfigure);
 
@@ -100,8 +99,8 @@ classdef snake < handle
 
             aylim = ylim(app.myaxes);
 
-            app.FPS_label = text(app.myaxes, 2, aylim(2) - 4, 2, 'FPS: ???');
-            app.length_label = text(app.myaxes, 2, aylim(2) - 12, 2, 'Length: ???');
+            app.FPS_label = text(app.myaxes, 2, aylim(2) - 15, 2, 'FPS: ???');
+            app.length_label = text(app.myaxes, 2, aylim(2) - 25, 2, 'Length: ???');
             for label = [app.FPS_label, app.length_label]
               set(label,
                   'FontName', 'Arial',
@@ -114,8 +113,11 @@ classdef snake < handle
 
 ##            app.update_timer.start();
 
-            if nargout == 0
-                clear app
+            # no timer -> drawnow!
+            while true
+              app.update();
+              pause(0.01);
+              drawnow;
             end
         end
 
@@ -148,11 +150,7 @@ classdef snake < handle
             for i = 1:length(app.parts)
                 B(i, :) = [app.parts(i).row, app.parts(i).col];
             end
-            app.A_set
-            B
-
             S = setdiff(app.A_set, B, 'rows');
-            pause
             if isempty(S)
                 disp('victory!!!')
                 app.new_game()
@@ -164,11 +162,7 @@ classdef snake < handle
             end
         end
 
-        function update(app, ~, ~)
-            % [NOTE] cannot use event.Data.time for newer Matlab,
-            %        it has only 1s resolution!
-
-            %datestr(event.Data.time)
+        function update(app)
             if isempty(app.last_update_tic)
                 dt = 0;
             else
@@ -177,6 +171,10 @@ classdef snake < handle
             end
             app.last_update_tic = tic;
             %fprintf('dt = %f\n', dt);
+            app.dt_history = [app.dt_history, dt];
+            if length(app.dt_history) > 15
+                app.dt_history = app.dt_history(2:end);
+            endif
 
             MOVE_T = 0.2;
 
@@ -205,7 +203,7 @@ classdef snake < handle
                 new_head = struct(...
                     'row', row, 'col', col, ...
                     'dir', app.snake_dir, ...
-                    'img', app.make_sprite('head_'+app.snake_dir, row, col));
+                    'img', app.make_sprite(['head_', app.snake_dir], row, col));
 
                 app.parts = [new_head, app.parts];
 
@@ -251,7 +249,7 @@ classdef snake < handle
                     delete(app.parts(end).img)
                     app.parts = app.parts(1:end-1);
                     i = length(app.parts);
-                    app.change_part_img(i, 'tail_'+app.parts(i-1).dir);
+                    app.change_part_img(i, ['tail_', app.parts(i-1).dir]);
                 end
 
                 % self-collision -> death, restart
@@ -269,23 +267,23 @@ classdef snake < handle
 
         function keyPressed(app, ~, keyData)
             switch keyData.Key
-                case 'leftarrow'
-                    if app.snake_dir ~= 'right'
+                case 'left'
+                    if ~strcmp(app.snake_dir, 'right')
                         app.snake_dir_next = 'left';
                     end
 
-                case 'rightarrow'
-                    if app.snake_dir ~= 'left'
+                case 'right'
+                    if ~strcmp(app.snake_dir, 'left')
                         app.snake_dir_next = 'right';
                     end
 
-                case 'uparrow'
-                    if app.snake_dir ~= 'down'
+                case 'up'
+                    if ~strcmp(app.snake_dir, 'down')
                         app.snake_dir_next = 'up';
                     end
 
-                case 'downarrow'
-                    if app.snake_dir ~= 'up'
+                case 'down'
+                    if ~strcmp(app.snake_dir, 'up')
                         app.snake_dir_next = 'down';
                     end
 
@@ -304,11 +302,11 @@ classdef snake < handle
                         'YData', y+[0, app.sprite_h-1], ...
                         'CData', app.images.(name){1});
 
-            if ~strcmp(name, 'grass')
-                set(img, 'AlphaData', app.images.(name){2});
-            else
-                set(img, 'AlphaData', 1);  % (no transparency for background)
-            end
+##            if ~strcmp(name, 'grass')
+##                set(img, 'AlphaData', app.images.(name){2});
+##            else
+##                set(img, 'AlphaData', 1);  % (no transparency for background)
+##            end
         end
 
         function move_sprite(app, img, row, col)
@@ -318,13 +316,13 @@ classdef snake < handle
         end
 
         function change_part_img(app, part_idx, name)
-            app.parts(part_idx).img.CData = app.images.(name){1};
-            if name ~= 'grass'
-                app.parts(part_idx).img.AlphaData = app.images.(name){2};
-            else
-                % (no transparency for background)
-                app.parts(part_idx).img.AlphaData = 1;
-            end
+          set(app.parts(part_idx).img, 'CData', app.images.(name){1});
+##            if ~strcmp(name, 'grass')
+##                set(app.parts(part_idx).img, 'AlphaData', app.images.(name){2});
+##            else
+##                % (no transparency for background)
+##                set(app.parts(part_idx).img, 'AlphaData', 1);  % (no transparency for background)
+##            end
         end
 
         function delete(app)

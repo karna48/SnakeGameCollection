@@ -36,6 +36,24 @@ function [images, sprite_w, sprite_h] = load_images()
         img_alpha = snake_png_alpha(x2:-1:x1, y1:y2, :);
         images.(rc_name{2}) = {img_rgb, img_alpha};
     end
+
+    % [FIX] Octave does not support alpha channel!
+    % copy grass background to other squares
+    grass_rgb = images.grass{1};
+    for name_c = names(:)'
+      name = name_c{1};
+      if ~strcmp(name, 'grass');
+          rgb = images.(name){1};
+          alpha = images.(name){2};
+          for channel = 1:3
+              data = rgb(:, :, channel);
+              grass_data = grass_rgb(:, :, channel);
+              data(alpha<128) = grass_data(alpha<128);
+              rgb(:, :, channel) = data;
+          end
+          images.(name){1} = rgb;
+      end
+    end
 end
 
 function [sounds] = load_sounds()
