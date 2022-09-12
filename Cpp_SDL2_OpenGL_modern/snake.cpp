@@ -1,5 +1,8 @@
 
 /*
+
+  NOT WORKING... something wrong with VAO
+
 TODO: SDL_ttf  length label, FPS counter
 
 */
@@ -12,12 +15,18 @@ TODO: SDL_ttf  length label, FPS counter
 #include <random>
 #include <algorithm>
 #include <chrono>
+
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+
+#define GL_GLEXT_PROTOTYPES
+
 #include <SDL.h>
 #include <SDL_image.h>
 #include <SDL_mixer.h>
-#include <GL/gl.h>
 
 #include "audiosystem.h"
+#include "loadshader.h"
 
 constexpr int WINDOW_WIDTH = 1200, WINDOW_HEIGHT = 800;
 constexpr int SPRITE_IMG_WIDTH = 16, SPRITE_IMG_HEIGHT = 16;
@@ -37,7 +46,7 @@ const std::vector<std::vector<std::string>> IMG_NAMES{
     {"vertical", "horizontal", "rabbit", "grass"}
 };
 
-void setup_opengl( int width, int height );
+glm::mat4 setup_opengl( int width, int height );
 
 auto g_img_rc = [](){
     std::unordered_map<std::string, std::pair<int, int>> img_rc;
@@ -53,6 +62,56 @@ auto g_img_rc = [](){
     }
     return img_rc;
 }();
+
+struct SpriteVAO
+{
+    GLuint quads_vertexbuffer;
+    std::vector<GLfloat> quads;
+    SpriteVAO()
+    {
+        glGenBuffers(1, &quads_vertexbuffer);
+    }
+    ~SpriteVAO()
+    {
+        // delete VAO
+    }
+    void next_frame(size_t keep) {
+        if(quads.size() < keep*16) {
+            fprintf(stderr, "ERROR: SpriteVAO::next_frame  quads.size() < keep*16\n");
+        }
+        quads.resize(keep*16);
+    }
+    void quad(
+        float x1, float y1, 
+        float x2, float y2, 
+        float u1, float v1, 
+        float u2, float v2)
+    {
+        quads.push_back(x1); quads.push_back(y1); quads.push_back(u1); quads.push_back(v1);
+        quads.push_back(x2); quads.push_back(y1); quads.push_back(u2); quads.push_back(v1);
+        quads.push_back(x2); quads.push_back(y2); quads.push_back(u2); quads.push_back(v2);
+        quads.push_back(x1); quads.push_back(y2); quads.push_back(u1); quads.push_back(v2);
+    }
+    void draw()
+    {
+        // transfer data to VAO object
+        glBindBuffer(GL_ARRAY_BUFFER, quads_vertexbuffer);
+        glBufferData(GL_ARRAY_BUFFER, quads.size()*sizeof(GLfloat), (const void*)quads.data(), GL_DYNAMIC_DRAW);    
+
+        glEnableVertexAttribArray(0);
+        glBindBuffer(GL_ARRAY_BUFFER, quads_vertexbuffer);
+        glVertexAttribPointer(
+            0,                  // attribute 0. No particular reason for 0, but must match the layout in the shader.
+            4,                  // size;  x,y,u,v
+            GL_FLOAT,           // type
+            GL_FALSE,           // normalized?
+            0,                  // stride
+            (void*)0            // array buffer offset
+        );
+        glDrawArrays(GL_QUADS, 0, quads.size()); // Starting from vertex 0; 3 vertices total -> 1 triangle
+        glDisableVertexAttribArray(0);
+    }
+};
 
 struct Sprite
 {
@@ -76,24 +135,9 @@ struct Sprite
         x = column * SPRITE_WIDTH;
         y = row * SPRITE_HEIGHT;
     }
-    void draw()
+    void draw(SpriteVAO& sprite_vao)
     {
-        //std::cout << "Draw sprite:" << x << ", " <<  y << ", " << u1 << ", " << v1 << ", " << u2 << ", " << v2 << "\n";
-        glColor3f(1, 1, 1);
-
-        glBegin(GL_QUADS);
-        glTexCoord2f(u1, v1);
-        glVertex2f(x, y);
-
-        glTexCoord2f(u2, v1);
-        glVertex2f(x+SPRITE_WIDTH, y);
-
-        glTexCoord2f(u2, v2);
-        glVertex2f(x+SPRITE_WIDTH, y+SPRITE_HEIGHT);
-
-        glTexCoord2f(u1, v2);
-        glVertex2f(x, y+SPRITE_HEIGHT);
-        glEnd();
+        sprite_vao.quad(x, y, x+SPRITE_WIDTH, y+SPRITE_WIDTH, u1, v1, u2, v2);
     }
 };
 
@@ -133,12 +177,14 @@ class SnakeGame
     Rabbit rabbit;
 
     AudioSystem &audio_system;
+    SpriteVAO &sprite_vao;
 
     std::default_random_engine rnd_generator;
 public:
-    SnakeGame(AudioSystem &audio_system):
+    SnakeGame(AudioSystem &audio_system, SpriteVAO &sprite_vao):
         rabbit(0, 0),
         audio_system(audio_system),
+        sprite_vao(sprite_vao),
         rnd_generator(std::chrono::high_resolution_clock::now().time_since_epoch().count())
     {
 
@@ -198,19 +244,22 @@ public:
 
     void draw()
     {
-        glClear(GL_COLOR_BUFFER_BIT);
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-        for(auto &sprite : background) {
-            sprite.draw();
+        if(sprite_vao.quads.size() == 0) {
+            for(auto &sprite : background) {
+                sprite.draw(sprite_vao);
+            }
+        }
+        else {
+            sprite_vao.next_frame(background.size());
         }
 
-        rabbit.sprite.draw();
+        rabbit.sprite.draw(sprite_vao);
 
         for(auto &part : snake) {
-            part.sprite.draw();
+            part.sprite.draw(sprite_vao);
         }
+
+        sprite_vao.draw();
     }
     void update(float dt)
     {
@@ -327,9 +376,12 @@ int main(/*int argc, char *argv[]*/)
          std::cerr << "SDL initialization failed: " << SDL_GetError() << std::endl;
          return 1;
     }
+    
+    SDL_GL_SetAttribute( SDL_GL_CONTEXT_MAJOR_VERSION, 3 );
+    SDL_GL_SetAttribute( SDL_GL_CONTEXT_MINOR_VERSION, 2 );
+    SDL_GL_SetAttribute( SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE );
 
-    SDL_version compiled;
-    SDL_version linked;
+    SDL_version compiled, linked;
 
     SDL_VERSION(&compiled);
     SDL_GetVersion(&linked);
@@ -343,7 +395,7 @@ int main(/*int argc, char *argv[]*/)
     SDL_GL_SetAttribute( SDL_GL_DOUBLEBUFFER, 1 );
 
     SDL_Window *window = SDL_CreateWindow(
-        "Snake game (C++ with SDL2/OpenGL [deprecated])", 
+        "Snake game (C++ with SDL2/OpenGL [modern])", 
         SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 
         WINDOW_WIDTH, WINDOW_HEIGHT, 
         SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_OPENGL);
@@ -358,7 +410,7 @@ int main(/*int argc, char *argv[]*/)
 
     SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 
-    setup_opengl(WINDOW_WIDTH, WINDOW_HEIGHT);
+    glm::mat4 projection_matrix = setup_opengl(WINDOW_WIDTH, WINDOW_HEIGHT);
 
     SDL_Texture *texture = IMG_LoadTexture(renderer, "../common_data/Snake.png");
     if (!texture) {
@@ -366,10 +418,13 @@ int main(/*int argc, char *argv[]*/)
         return 1;
     }
 
+    SDL_GL_BindTexture(texture, NULL, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-    SDL_GL_BindTexture(texture, NULL, NULL);
+    GLuint programId = LoadShaders("shader_vertex.glsl", "shader_fragment.glsl");
+    GLuint uniformProjectionId = glGetUniformLocation(programId, "projection");
+    GLuint uniformTex0Id = glGetUniformLocation(programId, "tex0");
 
     if( Mix_OpenAudio( 44100, MIX_DEFAULT_FORMAT, 2, 2048 ) < 0 )
     {
@@ -381,7 +436,8 @@ int main(/*int argc, char *argv[]*/)
 
     { // game and audio system scope
         AudioSystem audio_system;
-        SnakeGame snake_game(audio_system);
+        SpriteVAO sprite_vao;
+        SnakeGame snake_game(audio_system, sprite_vao);
         Uint32 last_ticks = SDL_GetTicks();
         bool done = false;
         while(!done) {
@@ -422,6 +478,19 @@ int main(/*int argc, char *argv[]*/)
 
             snake_game.update(dt);
 
+            glClear(GL_COLOR_BUFFER_BIT);
+
+            glUseProgram(programId); // where it should be ??
+
+            glUniformMatrix4fv(uniformProjectionId, 1, GL_FALSE, &projection_matrix[0][0]);
+
+            glActiveTexture(GL_TEXTURE0);
+            SDL_GL_BindTexture(texture, NULL, NULL);
+            glUniform1i(uniformTex0Id, 0);
+
+            glEnable(GL_BLEND);
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
             snake_game.draw();
             SDL_GL_SwapWindow(window);
         }
@@ -437,7 +506,7 @@ int main(/*int argc, char *argv[]*/)
 }
 
 
-void setup_opengl( int width, int height )
+glm::mat4 setup_opengl( int width, int height )
 {
     glShadeModel( GL_FLAT);
 
@@ -445,15 +514,9 @@ void setup_opengl( int width, int height )
     glFrontFace( GL_CCW );
     glEnable( GL_CULL_FACE );
 
-    glClearColor( 0, 0, 0, 0 );
+    glClearColor( 0.7, 0.7, 1, 0 );
 
     glViewport( 0, 0, width, height );
 
-    glMatrixMode( GL_PROJECTION );
-    glLoadIdentity( );
-
-    glOrtho(0, width, 0, height, -1, 1);
-
-    glMatrixMode( GL_MODELVIEW );
-
+    return glm::ortho(0, width, 0, height, -1, 1);
 }
