@@ -65,11 +65,12 @@ auto g_img_rc = [](){
 
 struct SpriteVAO
 {
-    GLuint quads_vertexbuffer;
+    GLuint quads_vertexbuffer, quads_vertexarrayobject;
     std::vector<GLfloat> quads;
     SpriteVAO()
     {
         glGenBuffers(1, &quads_vertexbuffer);
+        glGenVertexArrays(1, &quads_vertexarrayobject);
     }
     ~SpriteVAO()
     {
@@ -95,6 +96,7 @@ struct SpriteVAO
     void draw()
     {
         // transfer data to VAO object
+        glBindVertexArray(quads_vertexarrayobject);
         glBindBuffer(GL_ARRAY_BUFFER, quads_vertexbuffer);
         glBufferData(GL_ARRAY_BUFFER, quads.size()*sizeof(GLfloat), (const void*)quads.data(), GL_DYNAMIC_DRAW);    
 
@@ -108,7 +110,7 @@ struct SpriteVAO
             0,                  // stride
             (void*)0            // array buffer offset
         );
-        glDrawArrays(GL_QUADS, 0, quads.size()); // Starting from vertex 0; 3 vertices total -> 1 triangle
+        glDrawArrays(GL_QUADS, 0, quads.size()); // Starting from vertex 0; 4 vertices total -> 1 quad
         glDisableVertexAttribArray(0);
     }
 };
@@ -503,7 +505,6 @@ int main(/*int argc, char *argv[]*/)
     return 0;
 }
 
-
 glm::mat4 setup_opengl( int width, int height )
 {
     glShadeModel( GL_FLAT);
@@ -516,5 +517,5 @@ glm::mat4 setup_opengl( int width, int height )
 
     glViewport( 0, 0, width, height );
 
-    return glm::ortho(0, width, 0, height, -1, 1);
+    return glm::ortho<float>(0, width, 0, height, -1, 1);
 }
