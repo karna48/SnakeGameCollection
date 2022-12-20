@@ -339,9 +339,6 @@ int main(/*int argc, char *argv[]*/)
 
     IMG_Init(IMG_INIT_PNG);
 
-    // request opengl context attributes
-    SDL_GL_SetAttribute( SDL_GL_DOUBLEBUFFER, 1 );
-
     SDL_Window *window = SDL_CreateWindow(
         "Snake game (C++ with SDL2/OpenGL [deprecated])", 
         SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 
@@ -353,8 +350,6 @@ int main(/*int argc, char *argv[]*/)
         SDL_Quit();
         return 1;
     }
-
-    SDL_GLContext glcontext = SDL_GL_CreateContext(window);
 
     SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 
@@ -427,7 +422,7 @@ int main(/*int argc, char *argv[]*/)
         }
     }
 
-    SDL_GL_DeleteContext(glcontext);
+    SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
 
     Mix_Quit();

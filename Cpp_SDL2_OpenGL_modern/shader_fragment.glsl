@@ -2,7 +2,7 @@
 
 in vec2 UV;
 //out vec4 color;
-out vec3 color;
+out vec4 color;
 
 uniform sampler2D tex0;
 
@@ -12,4 +12,5 @@ void main(){
     color.r = 1;
     color.g = 0;
     color.b = 0;
+    color.a = 1;
 }

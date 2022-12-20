@@ -391,9 +391,6 @@ int main(/*int argc, char *argv[]*/)
 
     IMG_Init(IMG_INIT_PNG);
 
-    // request opengl context attributes
-    SDL_GL_SetAttribute( SDL_GL_DOUBLEBUFFER, 1 );
-
     SDL_Window *window = SDL_CreateWindow(
         "Snake game (C++ with SDL2/OpenGL [modern])", 
         SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 
@@ -406,11 +403,12 @@ int main(/*int argc, char *argv[]*/)
         return 1;
     }
 
-    SDL_GLContext glcontext = SDL_GL_CreateContext(window);
-
     SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 
+    std::cout << "renderer created" << std::endl;
+
     glm::mat4 projection_matrix = setup_opengl(WINDOW_WIDTH, WINDOW_HEIGHT);
+    std::cout << "opengl setup with projection matrix done" << std::endl;
 
     SDL_Texture *texture = IMG_LoadTexture(renderer, "../common_data/Snake.png");
     if (!texture) {
@@ -496,7 +494,7 @@ int main(/*int argc, char *argv[]*/)
         }
     }
 
-    SDL_GL_DeleteContext(glcontext);
+    SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
 
     Mix_Quit();

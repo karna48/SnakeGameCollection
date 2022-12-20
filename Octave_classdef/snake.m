@@ -141,7 +141,7 @@ classdef snake < handle
                'img', app.make_sprite('tail_right', 5, 4));
 
             app.move_t_rem = 1;
-            app.place_rabbit()
+            app.place_rabbit();
             app.update_labels();
         end
 
