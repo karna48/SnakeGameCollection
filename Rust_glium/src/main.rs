@@ -4,8 +4,10 @@ use std::io::{BufReader, Cursor};
 use rodio::{Decoder, OutputStream, Source, OutputStreamHandle};
 
 
-fn play_sound_cursor(cursor: &Cursor<u8>, stream_handle: &OutputStreamHandle) {
-    let sound_source = Decoder::new(BufReader::new(cursor)).unwrap();
+fn play_sound(sample_data: &Vec<u8>, stream_handle: &OutputStreamHandle) {
+    // TODO: avoid sample_data.clone
+    let cursor = Cursor::new(sample_data.clone());
+    let sound_source = Decoder::new(cursor).unwrap();
     stream_handle.play_raw(sound_source.convert_samples());
 }
 
@@ -22,9 +24,6 @@ fn main() {
     let mut die_wav_buf = Vec::new();
     die_wav_file.read_to_end(&mut die_wav_buf).unwrap();
 
-    
-    let die_wav_source = Decoder::new(Cursor::new(die_wav_buf)).unwrap();
-
     //let image = image::load(Cursor::new(&include_bytes!("/path/to/image.png")),
     let image = 
         image::load(
@@ -33,11 +32,11 @@ fn main() {
     let image_dimensions = image.dimensions();
     let image = glium::texture::RawImage2d::from_raw_rgba_reversed(&image.into_raw(), image_dimensions);
 
-    play_sound_buf(&die_wav_buf, &stream_handle);
+    play_sound(&die_wav_buf, &stream_handle);
 
     std::thread::sleep(std::time::Duration::from_secs(5));
 
-    play_sound_buf(&die_wav_buf, &stream_handle);
+    play_sound(&die_wav_buf, &stream_handle);
 
     std::thread::sleep(std::time::Duration::from_secs(5));
 
