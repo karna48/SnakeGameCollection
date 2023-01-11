@@ -27,7 +27,7 @@ classdef snake < matlab.apps.AppBase
         move_t_rem   double
         A_set        int32  % set of all squares [row, col; ...]
     end
-
+ 
     % Component initialization
     methods (Access = private)
 
@@ -38,25 +38,25 @@ classdef snake < matlab.apps.AppBase
             border_width = 5;
 
             app.UIFigure = uifigure('Visible', 'off');
-
+            
             app.UIFigure.Position = border_width + [0, 0, border_width+window_size];
             app.UIFigure.Name = 'Snake game (matlab)';
             app.UIFigure.Color = [0.75, 0.75, 1];
             app.UIFigure.AutoResizeChildren = 'off';
-
+            
             app.UIFigure.KeyPressFcn = @app.keyPressed;
-
+            
             % Create UIAxes
             app.UIAxes = uiaxes(app.UIFigure);
             app.UIAxes.Position = [0, 0, 1200, 800];
             %app.UIAxes.ButtonDownFcn = @app.mouseBtnPressed;
-
+            
             app.UIAxes.XColor = 'none';
             app.UIAxes.YColor = 'none';
             app.UIAxes.Toolbar.Visible = 'off';
-
+            
             axis(app.UIAxes, 'equal')
-
+            
             % Show the figure after all components are created
             app.UIFigure.Visible = 'on';
             app.UIFigure.Resize = 'off';
@@ -79,11 +79,11 @@ classdef snake < matlab.apps.AppBase
 
             % Register the app with App Designer
             registerApp(app, app.UIFigure)
-
+            
             app.sprite_zoom = 5;
             [app.images, app.sprite_w, app.sprite_h] = resource('images');
             [app.sounds] = resource('sounds');
-
+            
             app.rows = floor(app.UIAxes.Position(4) / (app.sprite_h*app.sprite_zoom));
             app.cols = floor(app.UIAxes.Position(3) / (app.sprite_w*app.sprite_zoom));
             app.A_set = zeros(app.rows*app.cols, 2);
@@ -94,10 +94,13 @@ classdef snake < matlab.apps.AppBase
                     app.bg_sprites{row, col} = app.make_sprite('grass', row, col);
                 end
             end
+            
+            fprintf("velikost hraci plochy: %dx%d, max. delka: %d\n", ...
+                app.rows, app.cols, app.rows*app.cols)
 
             % get focus
             figure(app.UIFigure);
-
+            
             app.update_timer = timer(...
                 'ExecutionMode', 'fixedRate', ...
                 'Period', 1/60, ...
@@ -105,9 +108,11 @@ classdef snake < matlab.apps.AppBase
             );
 
             app.last_update_tic = [];
-
+            
             app.rabbit = struct('row', 1, 'col', 1, ...
                 'img', app.make_sprite('rabbit', 1, 1));
+
+             app.UIAxes.Position(4);
 
             aylim = ylim(app.UIAxes);
 
@@ -135,26 +140,26 @@ classdef snake < matlab.apps.AppBase
 %                 fprintf("left mouse clicked!\n");
 %             end
 %         end
-
+        
         function new_game(app)
             app.snake_dir = 'right';
             app.snake_dir_next = 'right';
-
+            
             for part = app.parts
                 delete(part.img);
             end
-
+            
             app.parts = struct('row', [], 'col', [], 'dir', "", 'img', []);
-
+            
             app.parts(1) = struct('row', 5, 'col', 6, 'dir', "right", ...
                'img', app.make_sprite('head_right', 5, 6));
-
+            
             app.parts(2) = struct('row', 5, 'col', 5, 'dir', "right", ...
                'img', app.make_sprite('horizontal', 5, 5));
 
             app.parts(3) = struct('row', 5, 'col', 4, 'dir', "right", ...
                'img', app.make_sprite('tail_right', 5, 4));
-
+            
             app.move_t_rem = 1;
             app.place_rabbit()
             app.update_labels();
@@ -190,9 +195,10 @@ classdef snake < matlab.apps.AppBase
             end
             app.last_update_tic = tic;
             %fprintf("dt = %f\n", dt);
-
-            MOVE_T = 0.2;
-
+            
+            %MOVE_T = 0.09; % 0.22;
+            MOVE_T = 0.05;
+            
             app.move_t_rem = app.move_t_rem - dt;
             if app.move_t_rem < 0
                 app.move_t_rem = MOVE_T + app.move_t_rem;
@@ -210,7 +216,7 @@ classdef snake < matlab.apps.AppBase
                     case "down"
                         row = row - 1;
                 end
-
+                
                 % screen wrapping
                 row = mod(row-1, app.rows)+1;
                 col = mod(col-1, app.cols)+1;
@@ -219,12 +225,12 @@ classdef snake < matlab.apps.AppBase
                     'row', row, 'col', col, ...
                     'dir', app.snake_dir, ...
                     'img', app.make_sprite("head_"+app.snake_dir, row, col));
-
+                
                 app.parts = [new_head, app.parts];
 
                 Hd = app.snake_dir;  % new head direction
                 Sd = app.parts(2).dir; % second part (old head) direction
-
+                
                 if Hd == Sd && (Hd == "left" || Hd == "right")
                     app.change_part_img(2, "horizontal")
                 elseif Hd == Sd && (Hd == "down" || Hd == "up")
@@ -254,9 +260,9 @@ classdef snake < matlab.apps.AppBase
                         app.change_part_img(2, "turn_3")
                     end
                 end
-
+                
                 rabbit_eaten = row == app.rabbit.row && col == app.rabbit.col;
-
+                
                 if rabbit_eaten
                     app.place_rabbit()
                     sound(app.sounds.eat.y, app.sounds.eat.Fs)
@@ -266,7 +272,7 @@ classdef snake < matlab.apps.AppBase
                     i = length(app.parts);
                     app.change_part_img(i, "tail_"+app.parts(i-1).dir);
                 end
-
+                
                 % self-collision -> death, restart
                 for i=2:length(app.parts)
                     if row == app.parts(i).row && col == app.parts(i).col
@@ -275,37 +281,38 @@ classdef snake < matlab.apps.AppBase
                         break
                     end
                 end
-
+                
                 app.update_labels();
             end
         end
 
         function keyPressed(app, ~, keyData)
             switch keyData.Key
-                case 'leftarrow'
+                case {'leftarrow', 'numpad4', 'a'}
                     if app.snake_dir ~= "right"
                         app.snake_dir_next = "left";
                     end
-
-                case 'rightarrow'
+                
+                case {'rightarrow', 'numpad6', 'd'}
                     if app.snake_dir ~= "left"
                         app.snake_dir_next = "right";
                     end
 
-                case 'uparrow'
+                case {'uparrow', 'numpad8', 'w'}
                     if app.snake_dir ~= "down"
                         app.snake_dir_next = "up";
                     end
 
-                case 'downarrow'
+                case {'downarrow', 'numpad2', 's'}
                     if app.snake_dir ~= "up"
                         app.snake_dir_next = "down";
                     end
-
+                    
                 case 'escape'
                     app.delete()
                 otherwise
-                    fprintf("key pressed '%s', no action bound\n", keyData.Key)
+                    %fprintf("key pressed '%s', no action bound\n", keyData.Key)
+                    
             end
         end
 
@@ -320,23 +327,23 @@ classdef snake < matlab.apps.AppBase
             else
                 img.AlphaData = 1;  % (no transparency for background)
             end
-        end
-
+        end    
+         
         function move_sprite(app, img, row, col)
             img.XData = (col-1) * app.sprite_w;
             img.YData = (row-1) * app.sprite_h;
         end
-
+        
         function change_part_img(app, part_idx, name)
             app.parts(part_idx).img.CData = app.images.(name){1};
             if name ~= "grass"
                 app.parts(part_idx).img.AlphaData = app.images.(name){2};
             else
                 % (no transparency for background)
-                app.parts(part_idx).img.AlphaData = 1;
+                app.parts(part_idx).img.AlphaData = 1;  
             end
-        end
-
+        end        
+        
         % Code that executes before app deletion
         function delete(app)
             % Delete UIFigure when app is deleted
