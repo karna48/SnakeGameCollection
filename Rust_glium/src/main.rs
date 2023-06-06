@@ -8,7 +8,7 @@ fn play_sound(sample_data: &Vec<u8>, stream_handle: &OutputStreamHandle) {
     // TODO: avoid sample_data.clone
     let cursor = Cursor::new(sample_data.clone());
     let sound_source = Decoder::new(cursor).unwrap();
-    stream_handle.play_raw(sound_source.convert_samples());
+    stream_handle.play_raw(sound_source.convert_samples()).unwrap();
 }
 
 fn main() {
@@ -24,6 +24,11 @@ fn main() {
     let mut die_wav_buf = Vec::new();
     die_wav_file.read_to_end(&mut die_wav_buf).unwrap();
 
+    let mut event_loop = glium::glutin::event_loop::EventLoop::new();
+    let window_builder = glium::glutin::window::WindowBuilder::new();
+    let context_builder = glium::glutin::ContextBuilder::new();
+    let display = glium::Display::new(window_builder, context_builder, &event_loop).unwrap();
+
     //let image = image::load(Cursor::new(&include_bytes!("/path/to/image.png")),
     let image = 
         image::load(
@@ -32,20 +37,30 @@ fn main() {
     let image_dimensions = image.dimensions();
     let image = glium::texture::RawImage2d::from_raw_rgba_reversed(&image.into_raw(), image_dimensions);
 
-    play_sound(&die_wav_buf, &stream_handle);
-
-    std::thread::sleep(std::time::Duration::from_secs(5));
-
-    play_sound(&die_wav_buf, &stream_handle);
-
-    std::thread::sleep(std::time::Duration::from_secs(5));
-
     println!("{}", working_dir.display());
     println!("{:?}", image_dimensions);
-/*     println!("{}", die_sound_source.);
-    println!("{}", eat_sound_source.display());
-    println!("{}", image.display());
-    */
-    
+
+    event_loop.run(move |ev, _, control_flow| {
+        /*let next_frame_time = std::time::Instant::now() +
+            std::time::Duration::from_nanos(16_666_667);
+        *control_flow = glutin::event_loop::ControlFlow::WaitUntil(next_frame_time);*/
+        match ev {
+            glium::glutin::event::Event::WindowEvent { event, .. } => match event {
+                glium::glutin::event::WindowEvent::KeyboardInput { device_id, input, .. } => {
+                    if input.state == glium::glutin::event::ElementState::Pressed {
+                        println!("KeyboardInput pressed scancode {}", input.scancode);
+                        play_sound(&die_wav_buf, &stream_handle);
+                    }
+                },
+                glium::glutin::event::WindowEvent::CloseRequested => {
+                    *control_flow = glium::glutin::event_loop::ControlFlow::Exit;
+                    return;
+                },
+                _ => return,
+            },
+            _ => (),
+        }
+    });
+   
 }
 
