@@ -24,6 +24,10 @@ fn main() {
     let mut die_wav_buf = Vec::new();
     die_wav_file.read_to_end(&mut die_wav_buf).unwrap();
 
+    let mut eat_wav_file = File::open(data_dir.join("eat.wav")).unwrap();
+    let mut eat_wav_buf = Vec::new();
+    eat_wav_file.read_to_end(&mut eat_wav_buf).unwrap();
+
     let mut event_loop = glium::glutin::event_loop::EventLoop::new();
     let window_builder = glium::glutin::window::WindowBuilder::new();
     let context_builder = glium::glutin::ContextBuilder::new();
@@ -49,7 +53,19 @@ fn main() {
                 glium::glutin::event::WindowEvent::KeyboardInput { device_id, input, .. } => {
                     if input.state == glium::glutin::event::ElementState::Pressed {
                         println!("KeyboardInput pressed scancode {}", input.scancode);
-                        play_sound(&die_wav_buf, &stream_handle);
+
+                        if let Some(key) = input.virtual_keycode {
+                            println!("VirtualKeyCode {}", key);
+                            match key {
+                                glium::glutin::event::VirtualKeyCode::S => {
+                                    play_sound(&die_wav_buf, &stream_handle);
+                                },
+                                glium::glutin::event::VirtualKeyCode::X => {
+                                    play_sound(&eat_wav_buf, &stream_handle);
+                                },
+                              _ => {}
+                            }
+                      }                        
                     }
                 },
                 glium::glutin::event::WindowEvent::CloseRequested => {
