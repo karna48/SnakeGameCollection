@@ -28,7 +28,7 @@ fn main() {
     let mut eat_wav_buf = Vec::new();
     eat_wav_file.read_to_end(&mut eat_wav_buf).unwrap();
 
-    let mut event_loop = glium::glutin::event_loop::EventLoop::new();
+    let event_loop = glium::glutin::event_loop::EventLoop::new();
     let window_builder = glium::glutin::window::WindowBuilder::new();
     let context_builder = glium::glutin::ContextBuilder::new();
     let display = glium::Display::new(window_builder, context_builder, &event_loop).unwrap();
@@ -55,7 +55,7 @@ fn main() {
                         println!("KeyboardInput pressed scancode {}", input.scancode);
 
                         if let Some(key) = input.virtual_keycode {
-                            println!("VirtualKeyCode {}", key);
+                            println!("VirtualKeyCode {:#?}", key);
                             match key {
                                 glium::glutin::event::VirtualKeyCode::S => {
                                     play_sound(&die_wav_buf, &stream_handle);
