@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>Snake Game</title>
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js"></script>
+    <style>
+        body {
+          position: fixed;
+          width:  100%;
+          height: 100%;
+          margin: 0;
+          background-color: black;
+        }
+    </style>
+</head>
+<body>
+    <script type="text/javascript">
+      async function main() {
+          let pyodide = await loadPyodide();
+
+          await pyodide.runPythonAsync(`
+              from pyodide.http import pyfetch
+              response = await pyfetch("snake.py")
+              with open("snake.py", "wb") as f:
+                  f.write(await response.bytes())
+          `); // end of pyodide.runPythonAsync
+
+          let snake = pyodide.pyimport("snake");
+
+          window.snake_game = snake.SnakeGame()
+      }
+      main();
+    </script>
+
+    <img style="display: none;" src="data/Snake.png" id="Snake.png">
+    <canvas id="the-canvas"></canvas>
+</body>
+</html>
