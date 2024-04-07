@@ -5,8 +5,6 @@ out vec4 color;
 
 uniform sampler2D tex0;
 
-void main(){
-
+void main() {
     color = texture( tex0, UV ).rgba;
-    color.r = 1;
 }

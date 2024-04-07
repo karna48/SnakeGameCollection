@@ -1,11 +1,12 @@
 using System;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
-using OpenTK.Platform.Windows;
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
 using OpenTK.Windowing.GraphicsLibraryFramework;
 using StbImageSharp;
+
+
 
 public class Constants
 {
@@ -37,13 +38,15 @@ public class Constants
 public class SpriteVAO
 {
     int num_quads;
-    int quads_vertexbuffer, quads_vertexarrayobject;
+    int quads_vertexbuffer, quads_vertexarrayobject, quads_triangle_index_buffer;
     //List<float> quads;
     float[] quads;
+    UInt32 [] indicies;
 
     public SpriteVAO()
     {
         quads = new float[(Constants.ROWS*Constants.COLUMNS*2+1)*16];
+        indicies = new UInt32[(Constants.ROWS*Constants.COLUMNS*2+1)*6];
         num_quads = 0;
     }
 
@@ -51,6 +54,7 @@ public class SpriteVAO
     {
         quads_vertexbuffer = GL.GenBuffer();
         quads_vertexarrayobject = GL.GenVertexArray();
+        quads_triangle_index_buffer = GL.GenBuffer();
     }
 
     public void next_frame(int keep)
@@ -67,6 +71,8 @@ public class SpriteVAO
         float u1, float v1, 
         float u2, float v2)
     {
+        uint offset = (uint)(num_quads) * 4;
+        int ioffset = num_quads * 6;
         /*quads.Add(x1); quads.Add(y1); quads.Add(u1); quads.Add(v1);
         quads.Add(x2); quads.Add(y1); quads.Add(u2); quads.Add(v1);
         quads.Add(x2); quads.Add(y2); quads.Add(u2); quads.Add(v2);
@@ -76,6 +82,13 @@ public class SpriteVAO
         quads[num_quads*16 +  8] = x2; quads[num_quads*16 +  9] = y2; quads[num_quads*16 + 10] = u2; quads[num_quads*16 + 11] = v2;
         quads[num_quads*16 + 12] = x1; quads[num_quads*16 + 13] = y2; quads[num_quads*16 + 14] = u1; quads[num_quads*16 + 15] = v2;
         num_quads++;
+
+        indicies[ioffset+0] = offset+0;
+        indicies[ioffset+1] = offset+1;
+        indicies[ioffset+2] = offset+2;
+        indicies[ioffset+3] = offset+2;
+        indicies[ioffset+4] = offset+3;
+        indicies[ioffset+5] = offset+0;
 
         //Console.WriteLine(String.Format("{0} {1} {2} {3} {4} {5} {6} {7}", x1, y1, x2, y2, u1, v1, u1, v1));
     }
@@ -89,6 +102,7 @@ public class SpriteVAO
 
         //Console.WriteLine(num_quads);
 
+        GL.EnableVertexAttribArray(0);
         GL.BindBuffer(BufferTarget.ArrayBuffer, quads_vertexbuffer);
         GL.VertexAttribPointer(
             0,                  // attribute 0. No particular reason for 0, but must match the layout in the shader.
@@ -98,8 +112,12 @@ public class SpriteVAO
             0,                  // stride
             0            // array buffer offset
         );
-        GL.EnableVertexAttribArray(0);
-        GL.DrawArrays(PrimitiveType.Quads, 0, num_quads*16); // Starting from vertex 0; 4 vertices total -> 1 quad
+
+        GL.BindBuffer(BufferTarget.ElementArrayBuffer, quads_triangle_index_buffer);
+        GL.BufferData(BufferTarget.ElementArrayBuffer, indicies.Length*sizeof(UInt32), indicies, BufferUsageHint.DynamicDraw);
+
+        
+        GL.DrawElements(PrimitiveType.Triangles, num_quads*6, DrawElementsType.UnsignedInt, 0);
         GL.DisableVertexAttribArray(0);
     }
 }
@@ -207,11 +225,17 @@ public class SnakeGame : GameWindow
     {
         base.OnLoad();
 
+        var renderer = GL.GetString(StringName.Renderer);
+        var vendor = GL.GetString(StringName.Vendor);
+        var version = GL.GetString(StringName.Version);
+        var glslversion = GL.GetString(StringName.ShadingLanguageVersion);
+        
+        Console.WriteLine(string.Format("OpenGL info:\n\tRenderer: {0}\n\tVendor: {1}\n\tGL Version: {2}\n\tGLSL Version:{3}\n", renderer, vendor, version, glslversion));
+
         GL.ClearColor(0.7f, 0.7f, 1.0f, 0.0f);
-        //GL.CullFace(CullFaceMode.Back);
-        //GL.FrontFace(FrontFaceDirection.Ccw);
-        //GL.Enable(EnableCap.CullFace);
-        GL.Disable(EnableCap.CullFace);
+        GL.CullFace(CullFaceMode.Back);
+        GL.FrontFace(FrontFaceDirection.Ccw);
+        GL.Enable(EnableCap.CullFace);
 
         StbImage.stbi_set_flip_vertically_on_load(1);
         texture = GL.GenTexture();
@@ -241,12 +265,18 @@ public class SnakeGame : GameWindow
         snake.Add(new SnakePart(3, 3, "up", "head_up"));
 
         /*reset_snake();
-        place_rabbit();*/        
+        place_rabbit();*/
     }
 
     protected override void OnRenderFrame(FrameEventArgs e)
     {
         base.OnRenderFrame(e);
+
+        OpenTK.Graphics.OpenGL4.ErrorCode errorCode = GL.GetError();
+        if (errorCode != OpenTK.Graphics.OpenGL4.ErrorCode.NoError)
+        {
+            Console.WriteLine("OnRenderFrame error code in queue: ", errorCode.ToString());
+        }
 
         GL.Clear(ClearBufferMask.ColorBufferBit);
         GL.UseProgram(ShaderProgramID);
@@ -258,10 +288,9 @@ public class SnakeGame : GameWindow
         GL.Enable(EnableCap.Blend);
         GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcColor);
 
-        //rabbit.sprite.draw(spriteVAO);
+        rabbit.sprite.draw(spriteVAO);
 
-        /*
-        for(auto &part : snake) {
+        /*for(auto &part : snake) {
             part.sprite.draw(spriteVAO);
         }*/
 
