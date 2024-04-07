@@ -1,4 +1,6 @@
 using System;
+using System.Data;
+using System.Xml;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
 using OpenTK.Windowing.Common;
@@ -190,6 +192,7 @@ public class SnakeGame : GameWindow
     public const string DIR_LEFT = "left";
     public const string DIR_UP = "up";
     public const string DIR_DOWN = "down";
+    Random rng;
     AudioSystem audioSystem;
     // GL handles
     int texture, VertexShaderID, FragmentShaderID, ShaderProgramID;
@@ -198,20 +201,22 @@ public class SnakeGame : GameWindow
     List<Sprite> background;
     float snake_move_t, snake_move_t_rem;
     HashSet<Tuple<int, int>> set_all_squares;
-    string snake_dir_next = "s";
+    string snake_dir_next = DIR_RIGHT;
     Rabbit rabbit;
     SpriteVAO spriteVAO;
     Matrix4 projection;
     public SnakeGame(GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
         : base(gameWindowSettings, nativeWindowSettings)
     {
+        rng = new Random();
+
         audioSystem = new AudioSystem();
         spriteVAO = new SpriteVAO();
         snake = new List<SnakePart>();
         background = new List<Sprite>();
 
         set_all_squares = new HashSet<Tuple<int, int>>();
-
+        
         rabbit = new Rabbit(0, 0);
 
         //Console.Out.WriteLine(fragment_shader_text);
@@ -237,7 +242,7 @@ public class SnakeGame : GameWindow
         GL.FrontFace(FrontFaceDirection.Ccw);
         GL.Enable(EnableCap.CullFace);
 
-        StbImage.stbi_set_flip_vertically_on_load(1);
+        StbImage.stbi_set_flip_vertically_on_load(0);
         texture = GL.GenTexture();
         GL.ActiveTexture(TextureUnit.Texture0);
         GL.BindTexture(TextureTarget.Texture2D, texture);
@@ -262,10 +267,44 @@ public class SnakeGame : GameWindow
             }
         }
 
-        snake.Add(new SnakePart(3, 3, "up", "head_up"));
+        reset_snake();
+        place_rabbit();
+    }
 
-        /*reset_snake();
-        place_rabbit();*/
+    public void place_rabbit()
+    {
+        var set_all_squares_copy = new HashSet<Tuple<int, int>>(set_all_squares);
+        var snake_squares = new List<Tuple<int, int>>();
+
+        foreach(SnakePart part in snake) {
+            snake_squares.Add(new Tuple<int, int>(part.row, part.col));
+        }
+        set_all_squares_copy.ExceptWith(snake_squares);
+
+        var free_squares = new Tuple<int, int>[set_all_squares_copy.Count()];
+        set_all_squares_copy.CopyTo(free_squares);
+
+        if(free_squares.Length > 0) {
+            var square = free_squares[rng.Next(free_squares.Length)];
+            rabbit.move(square.Item1, square.Item2);
+        } else {
+            reset_snake();
+            place_rabbit();
+        }
+    }
+
+    public void reset_snake()
+    {
+        snake.Clear();
+
+        int row = Constants.ROWS / 3, col = Constants.COLUMNS / 3;
+
+        snake.Add(new SnakePart(row, col, "right", "head_right"));
+        snake.Add(new SnakePart(row, col-1, "right", "horizontal"));
+        snake.Add(new SnakePart(row, col-2, "right", "tail_right"));
+        snake_move_t = 0.2f;
+        snake_move_t_rem = snake_move_t;
+        snake_dir_next = DIR_RIGHT;
     }
 
     protected override void OnRenderFrame(FrameEventArgs e)
@@ -280,31 +319,110 @@ public class SnakeGame : GameWindow
 
         GL.Clear(ClearBufferMask.ColorBufferBit);
         GL.UseProgram(ShaderProgramID);
-        GL.UniformMatrix4(uniformProjectionID, true, ref projection);
+        GL.UniformMatrix4(uniformProjectionID, false, ref projection);
         GL.ActiveTexture(TextureUnit.Texture0);
         GL.BindTexture(TextureTarget.Texture2D, texture);
         GL.Uniform1(uniformTex0ID, 0);
 
         GL.Enable(EnableCap.Blend);
-        GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcColor);
+        GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
 
-        rabbit.sprite.draw(spriteVAO);
+        spriteVAO.next_frame(background.Count()); // clear quads except for background
 
-        /*for(auto &part : snake) {
-            part.sprite.draw(spriteVAO);
-        }*/
+        rabbit.sprite.draw(spriteVAO); // add quad to spriteVAO
 
-        spriteVAO.draw();
+        foreach(SnakePart part in snake) {
+            part.sprite.draw(spriteVAO); // add quad to spriteVAO
+        }
+
+        spriteVAO.draw(); // actual drawing of all sprite quads
 
         SwapBuffers();
     }
 
-    // This function runs on every update frame.
     protected override void OnUpdateFrame(FrameEventArgs e)
     {
+        base.OnUpdateFrame(e);
+        float dt = (float)e.Time;
 
-        base.OnUpdateFrame(e);        
-        spriteVAO.next_frame(background.Count());
+        snake_move_t_rem -= dt;
+        if(snake_move_t_rem <= 0) {
+            snake_move_t_rem += snake_move_t;
+            int row = snake[0].row;
+            int col = snake[0].col;
+            string head_dir = snake_dir_next;
+            if(head_dir == DIR_LEFT) {
+                col--;
+            } else if(head_dir == DIR_RIGHT) {
+                col++;
+            } else if(head_dir == DIR_UP) {
+                row++;
+            }else if(head_dir == DIR_DOWN) {
+                row--;
+            }
+            row %= Constants.ROWS;
+            col %= Constants.COLUMNS;
+            if(row < 0) {
+                row = Constants.ROWS - 1;
+            }
+            if(col < 0) {
+                col = Constants.COLUMNS - 1;
+            }
+            snake.Insert(0, new SnakePart(row, col, head_dir, "head_"+head_dir));
+            var old_dir = snake[1].dir;
+            if(head_dir == old_dir) {
+                if(head_dir == DIR_LEFT || head_dir == DIR_RIGHT) {
+                    snake[1].sprite.set_image("horizontal");
+                } else {
+                    snake[1].sprite.set_image("vertical");
+                }
+            } else if(old_dir == DIR_DOWN) {
+                if(head_dir == DIR_LEFT) {
+                    snake[1].sprite.set_image("turn_4");
+                } else {
+                    snake[1].sprite.set_image("turn_1");
+                }
+            } else if(old_dir == DIR_UP) {
+                if(head_dir == DIR_LEFT) {
+                    snake[1].sprite.set_image("turn_3");
+                } else {
+                    snake[1].sprite.set_image("turn_2");
+                }
+            } else if(old_dir == DIR_LEFT) {
+                if(head_dir == DIR_UP) {
+                    snake[1].sprite.set_image("turn_1");
+                } else {
+                    snake[1].sprite.set_image("turn_2");
+                }
+            } else if(old_dir == DIR_RIGHT) {
+                if(head_dir == DIR_UP) {
+                    snake[1].sprite.set_image("turn_4");
+                } else {
+                    snake[1].sprite.set_image("turn_3");
+                }
+            }
+
+            bool rabbit_eaten = rabbit.row == row && rabbit.col == col;
+
+            if(!rabbit_eaten) {
+                snake.RemoveAt(snake.Count - 1);
+                var dir = snake[snake.Count - 2].dir;
+                snake.Last().sprite.set_image("tail_"+dir);
+            } else {
+                audioSystem.play_eat();
+                place_rabbit();
+            }
+
+            // test self collision
+            foreach(var part in snake.GetRange(1, snake.Count - 1)) {
+                if(part.col == col && part.row == row) {
+                    audioSystem.play_die();
+                    reset_snake();
+                    place_rabbit();
+                    break;
+                }
+            }
+        }        
     }
 
     public void key_input(string dir)
