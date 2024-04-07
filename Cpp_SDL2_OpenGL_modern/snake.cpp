@@ -1,10 +1,10 @@
 
 /*
+    intermediate mode and GL_QUADS are deprecated;
+    must use glDrawElements
+    must NOT use SDL2 renderer which falls back to OpenGL 2.1
 
-  NOT WORKING... something wrong with VAO
-
-TODO: SDL_ttf  length label, FPS counter
-
+    TODO: SDL_ttf  length label, FPS counter
 */
 
 #include <iostream>
@@ -65,13 +65,18 @@ auto g_img_rc = [](){
 
 struct SpriteVAO
 {
-    GLuint quads_vertexbuffer, quads_vertexarrayobject;
+    GLuint quads_vertexbuffer, quads_vertexarrayobject, quads_triangle_index_buffer;
+
     std::vector<GLfloat> quads;
+    std::vector<GLuint> indicies;
+
     SpriteVAO()
     {
         glGenBuffers(1, &quads_vertexbuffer);
         glGenVertexArrays(1, &quads_vertexarrayobject);
+        glGenBuffers(1, &quads_triangle_index_buffer);
     }
+
     ~SpriteVAO()
     {
         // delete VAO
@@ -88,10 +93,17 @@ struct SpriteVAO
         float u1, float v1, 
         float u2, float v2)
     {
+        unsigned offset = quads.size() / 4;
         quads.push_back(x1); quads.push_back(y1); quads.push_back(u1); quads.push_back(v1);
         quads.push_back(x2); quads.push_back(y1); quads.push_back(u2); quads.push_back(v1);
         quads.push_back(x2); quads.push_back(y2); quads.push_back(u2); quads.push_back(v2);
         quads.push_back(x1); quads.push_back(y2); quads.push_back(u1); quads.push_back(v2);
+        indicies.push_back(offset+0);
+        indicies.push_back(offset+1);
+        indicies.push_back(offset+2);
+        indicies.push_back(offset+2);
+        indicies.push_back(offset+3);
+        indicies.push_back(offset+0);
     }
     void draw()
     {
@@ -99,6 +111,9 @@ struct SpriteVAO
         glBindVertexArray(quads_vertexarrayobject);
         glBindBuffer(GL_ARRAY_BUFFER, quads_vertexbuffer);
         glBufferData(GL_ARRAY_BUFFER, quads.size()*sizeof(GLfloat), (const void*)quads.data(), GL_DYNAMIC_DRAW);    
+
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, quads_triangle_index_buffer);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, indicies.size()*sizeof(GLuint), indicies.data(), GL_DYNAMIC_DRAW);        
 
         glEnableVertexAttribArray(0);
         glBindBuffer(GL_ARRAY_BUFFER, quads_vertexbuffer);
@@ -110,7 +125,9 @@ struct SpriteVAO
             0,                  // stride
             (void*)0            // array buffer offset
         );
-        glDrawArrays(GL_QUADS, 0, quads.size()); // Starting from vertex 0; 4 vertices total -> 1 quad
+
+        glDrawElements(GL_TRIANGLES, indicies.size(), GL_UNSIGNED_INT, nullptr);
+
         glDisableVertexAttribArray(0);
     }
 };
@@ -372,17 +389,13 @@ public:
     }
 };
 
-int main(/*int argc, char *argv[]*/)
+int main(int argc, char *argv[])
 {
     if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_EVENTS)) {
          std::cerr << "SDL initialization failed: " << SDL_GetError() << std::endl;
          return 1;
     }
     
-    SDL_GL_SetAttribute( SDL_GL_CONTEXT_MAJOR_VERSION, 3 );
-    SDL_GL_SetAttribute( SDL_GL_CONTEXT_MINOR_VERSION, 2 );
-    SDL_GL_SetAttribute( SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE );
-
     SDL_version compiled, linked;
 
     SDL_VERSION(&compiled);
@@ -390,6 +403,11 @@ int main(/*int argc, char *argv[]*/)
     std::cout << "SDL Version:\n";
     std::cout << "      compiled: " << int(compiled.major) << "." << int(compiled.minor) << "." << int(compiled.patch) << "\n";
     std::cout << "        linked: " << int(linked.major) << "." << int(linked.minor) << "." << int(linked.patch) << std::endl;
+
+    SDL_GL_SetAttribute( SDL_GL_CONTEXT_MAJOR_VERSION, 3 );
+    SDL_GL_SetAttribute( SDL_GL_CONTEXT_MINOR_VERSION, 2 );
+    SDL_GL_SetAttribute( SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE );
+
 
     IMG_Init(IMG_INIT_PNG);
 
@@ -405,22 +423,71 @@ int main(/*int argc, char *argv[]*/)
         return 1;
     }
 
-    SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+    // we need to create context without SDL renderer -> cannot use IMG_LoadTexture
+    SDL_GLContext glcontext = SDL_GL_CreateContext(window);
+    if(!glcontext) {
+        std::cerr << "Cannot create GL context: " << SDL_GetError() << std::endl;
+        SDL_DestroyWindow(window);
+        SDL_Quit();
+        return 1;        
+    }
 
-    std::cout << "renderer created" << std::endl;
+    SDL_GL_MakeCurrent(window, glcontext);
 
     glm::mat4 projection_matrix = setup_opengl(WINDOW_WIDTH, WINDOW_HEIGHT);
     std::cout << "opengl setup with projection matrix done" << std::endl;
 
-    SDL_Texture *texture = IMG_LoadTexture(renderer, "../common_data/Snake.png");
-    if (!texture) {
+    // we need to create context without SDL2 renderer -> cannot use IMG_LoadTexture
+    // because SDL2 renderer uses OpenGL 2.1 and we need modern 3.2 context
+
+    SDL_Surface *surface = IMG_Load("../common_data/Snake.png");
+    if (!surface) {
         std::cerr << "Cannot load texture:" << IMG_GetError() << std::endl;
+        SDL_DestroyWindow(window);
+        SDL_Quit();        
         return 1;
     }
 
-    SDL_GL_BindTexture(texture, NULL, NULL);
+    GLuint texture;
+    GLenum textureFormat;
+
+    switch (surface->format->BytesPerPixel) {
+        case 4:
+            if (SDL_BYTEORDER == SDL_BIG_ENDIAN) {
+                textureFormat = GL_BGRA;
+                std::cout << "detected texture format: GL_BGRA\n";
+            } else {
+                textureFormat = GL_RGBA;
+                std::cout << "detected texture format: GL_RGBA\n";
+            }
+        break;
+
+        case 3:
+            if (SDL_BYTEORDER == SDL_BIG_ENDIAN) {
+                textureFormat = GL_BGR;
+                std::cout << "detected texture format: GL_BGR\n";
+            } else {
+                textureFormat = GL_RGB;
+                std::cout << "detected texture format: GL_RGB\n";
+            }
+        break;
+
+        default: {
+            std::cerr << "Wrong texture format, bytes per pixel=" << int(surface->format->BytesPerPixel) << std::endl;
+            SDL_DestroyWindow(window);
+            SDL_Quit();
+            return 1;
+        }
+    }
+
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, textureFormat, surface->w, surface->h, 
+        0, textureFormat, GL_UNSIGNED_BYTE, surface->pixels);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+    SDL_FreeSurface(surface);
 
     GLuint programId = LoadShaders("shader_vertex.glsl", "shader_fragment.glsl");
     GLuint uniformProjectionId = glGetUniformLocation(programId, "projection");
@@ -478,14 +545,14 @@ int main(/*int argc, char *argv[]*/)
 
             snake_game.update(dt);
 
-            glClear(GL_COLOR_BUFFER_BIT);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
             glUseProgram(programId); // where it should be ??
 
             glUniformMatrix4fv(uniformProjectionId, 1, GL_FALSE, &projection_matrix[0][0]);
 
             glActiveTexture(GL_TEXTURE0);
-            SDL_GL_BindTexture(texture, NULL, NULL);
+            glBindTexture(GL_TEXTURE_2D, texture);
             glUniform1i(uniformTex0Id, 0);
 
             glEnable(GL_BLEND);
@@ -496,7 +563,6 @@ int main(/*int argc, char *argv[]*/)
         }
     }
 
-    SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
 
     Mix_Quit();
@@ -507,13 +573,12 @@ int main(/*int argc, char *argv[]*/)
 
 glm::mat4 setup_opengl( int width, int height )
 {
-    glShadeModel( GL_FLAT);
-
     glCullFace( GL_BACK );
     glFrontFace( GL_CCW );
     glEnable( GL_CULL_FACE );
 
     glClearColor( 0.7, 0.7, 1, 0 );
+    glDepthMask(GL_FALSE);
 
     glViewport( 0, 0, width, height );
 
