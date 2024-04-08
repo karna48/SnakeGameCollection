@@ -20,6 +20,13 @@ class SnakePart {
     public int col;
     public string dir;
     public string image_name;
+    public SnakePart(int r, int c, string dir, string image_name)
+    {
+        row = r;
+        col = c;
+        this.dir = dir;
+        this.image_name = image_name;
+    }
 }
 
 
@@ -34,7 +41,6 @@ class SnakeGame {
 
     Gee.HashMap<string, Gdk.Pixbuf> images;
     Gee.ArrayList<SnakePart> snake;
-    Gee.HashSet<Square> set_all_squares;
     string snake_next_dir;
     Square rabbit;
 
@@ -53,6 +59,7 @@ class SnakeGame {
         var snake_pixbuf = new Gdk.Pixbuf.from_file("../common_data/Snake.png");
         
         /*
+        // Linux Mint 21.3
         //  GLib-GIO-CRITICAL **: 07:46:17.301: g_io_extension_point_get_extensions: assertion 'extension_point != NULL' failed
         //  Gtk-ERROR **: 07:46:17.301: GTK was run without any GtkMediaFile extension being present. This must not happen.
         sound_eat = Gtk.MediaFile.for_filename("../common_data/eat.wav");
@@ -82,6 +89,32 @@ class SnakeGame {
         rabbit = new Square(0, 0);
 
         reset_snake();
+        place_rabbit();
+    }
+
+    void place_rabbit()
+    {
+        rabbit.row = GLib.Random.int_range(0, ROWS);
+        rabbit.col = GLib.Random.int_range(0, COLUMNS);
+
+        var squares = Gee.List<Square>();
+
+        for(int row = 0; row < ROWS; row++) {
+            for(int col = 0; col < COLUMNS; col++) {
+                var contains = false;
+                foreach(var part in snake) { // not very efficient
+                    if(part.col == col && part.row == row) {
+                        contains = true;
+                        break;
+                    }
+                }
+                if(!contains) {
+                    squares.add(Square(row, col));
+                }        
+            }
+        }
+        // TODO no squares left
+        rabbit = squares[GLib.Random.int_range(0, squares.size())];
     }
 
     void reset_snake()
@@ -89,6 +122,14 @@ class SnakeGame {
         snake_move_t = 0.2f;
         snake_move_t_rem = snake_move_t;        
         snake.clear();
+        var row = 2*ROWS / 3; // this version is flipped vertically
+        var col = COLUMNS / 3;
+        var p = new SnakePart(row, col, "right", "head_right");
+        snake.add(p);
+        p = new SnakePart(row, col-1, "right", "horizontal");
+        snake.add(p);
+        p = new SnakePart(row, col-2, "right", "tail_right");
+        snake.add(p);
     }
 
     public void redraw(Gtk.DrawingArea drawing_area, Cairo.Context cr, int width, int height)
@@ -103,6 +144,19 @@ class SnakeGame {
             }
         }
 
+        foreach(var part in snake) {
+            Gdk.cairo_set_source_pixbuf(
+                cr, images[part.image_name], 
+                part.col*SPRITE_WIDTH, part.row*SPRITE_HEIGHT);
+            cr.get_source().set_filter(Cairo.Filter.NEAREST);
+            cr.paint();
+        }
+
+        Gdk.cairo_set_source_pixbuf(
+            cr, images["rabbit"], 
+            rabbit.col*SPRITE_WIDTH, rabbit.row*SPRITE_HEIGHT);
+        cr.get_source().set_filter(Cairo.Filter.NEAREST);
+        cr.paint();
     }
 
     public bool key_pressed (uint keyval, uint keycode, Gdk.ModifierType state)
