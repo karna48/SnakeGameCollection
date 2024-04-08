@@ -44,8 +44,10 @@ class SnakeGame {
     string snake_next_dir;
     Square rabbit;
 
-    float snake_move_t;
-    float snake_move_t_rem;
+    GLib.Timer timer;
+
+    double snake_move_t;
+    double snake_move_t_rem;
 
     Gtk.ApplicationWindow window;
     Gtk.DrawingArea drawing_area;
@@ -56,6 +58,7 @@ class SnakeGame {
 
     public SnakeGame()
     {
+        timer = new GLib.Timer();
         var snake_pixbuf = new Gdk.Pixbuf.from_file("../common_data/Snake.png");
         
         /*
@@ -68,7 +71,6 @@ class SnakeGame {
         
     
         images = new Gee.HashMap<string, Gdk.Pixbuf>();
-        set_all_squares = new Gee.HashSet<Square>();
 
         string [,] image_names = {
             {"head_up", "head_right", "head_down", "head_left"},
@@ -81,12 +83,13 @@ class SnakeGame {
             for(int j = 0; j < image_names.length[1]; j++) {
                 var name = image_names[i, j];
                 images[name] = new Gdk.Pixbuf.subpixbuf(snake_pixbuf, j*SPRITE_WIDTH, i*SPRITE_HEIGHT, SPRITE_WIDTH, SPRITE_HEIGHT);
-                set_all_squares.add(new Square(i, j));
             }
         }
 
         snake = new Gee.ArrayList<SnakePart>();
         rabbit = new Square(0, 0);
+        
+        snake_move_t_rem = 3;
 
         reset_snake();
         place_rabbit();
@@ -97,7 +100,7 @@ class SnakeGame {
         rabbit.row = GLib.Random.int_range(0, ROWS);
         rabbit.col = GLib.Random.int_range(0, COLUMNS);
 
-        var squares = Gee.List<Square>();
+        var squares = new Gee.ArrayList<Square>();
 
         for(int row = 0; row < ROWS; row++) {
             for(int col = 0; col < COLUMNS; col++) {
@@ -109,18 +112,22 @@ class SnakeGame {
                     }
                 }
                 if(!contains) {
-                    squares.add(Square(row, col));
+                    squares.add(new Square(row, col));
                 }        
             }
         }
-        // TODO no squares left
-        rabbit = squares[GLib.Random.int_range(0, squares.size())];
+
+        if(squares.size == 0) {
+            reset_snake();
+            place_rabbit();
+        } else {
+            rabbit = squares[GLib.Random.int_range(0, squares.size)];
+        }
     }
 
     void reset_snake()
     {
-        snake_move_t = 0.2f;
-        snake_move_t_rem = snake_move_t;        
+        snake_move_t = 0.2;
         snake.clear();
         var row = 2*ROWS / 3; // this version is flipped vertically
         var col = COLUMNS / 3;
@@ -130,6 +137,101 @@ class SnakeGame {
         snake.add(p);
         p = new SnakePart(row, col-2, "right", "tail_right");
         snake.add(p);
+        snake_next_dir = "right";
+    }
+
+    public bool update()
+    {
+        double dt = 0.0;
+        if(!timer.is_active()) {
+            timer.start();
+        } else {
+            dt = timer.elapsed();
+            timer.start();
+            //stdout.printf("%lf\n", dt);
+        }
+        snake_move_t_rem -= dt;
+        if(snake_move_t_rem <= 0) {
+            snake_move_t_rem = snake_move_t;
+            var head_dir = snake_next_dir;
+            int row = snake[0].row;
+            int col = snake[0].col;
+            if (head_dir == "left") {
+                col -= 1;
+            } else if (head_dir == "right") {
+                col += 1;
+            } else if (head_dir == "up") { // flipped version
+                row -= 1;
+            } else if (head_dir == "down") {
+                row += 1;
+            } else {
+                print("WARING: unknown head_dir!\n");
+                return window.get_visible();
+            }
+
+            // NOTE: %= operator did not work properly even when using uint!
+
+            if(row < 0) {
+                row = ROWS-1;
+            } else if(row >= ROWS) {
+                row = 0;
+            }
+
+            if(col < 0) {
+                col = COLUMNS-1;
+            } else if(col >= COLUMNS) {
+                col = 0;
+            }
+
+            snake.insert(0, new SnakePart((int)row, (int)col, head_dir, "head_"+head_dir));
+
+            var old_dir = snake[1].dir;
+            var img_name = "";
+
+            if (head_dir == old_dir) {
+                snake[1].image_name = (head_dir == "left" || head_dir == "right") ? "horizontal" : "vertical";
+            } else if (old_dir == "right") {
+                snake[1].image_name = (head_dir == "up") ? "turn_4" : "turn_3";
+            } else if (old_dir == "left") {
+                snake[1].image_name = (head_dir == "up") ? "turn_1" : "turn_2";
+            } else if (old_dir == "up") {
+                snake[1].image_name = (head_dir == "left") ? "turn_3" : "turn_2";
+            } else if (old_dir == "down") {
+                snake[1].image_name = (head_dir == "left") ? "turn_4" : "turn_1";
+            } else {
+                print("WARING: unknown second snake part direction!\n");
+                return window.get_visible();
+            }
+
+            var rabbit_eaten = row == rabbit.row && col == rabbit.col;
+
+            if(!rabbit_eaten) {
+                snake.remove_at(snake.size - 1);
+                snake.last().image_name = "tail_"+snake[snake.size-2].dir;
+            } else {
+                snake_move_t -= 0.005;
+                if(snake_move_t < 0.01) {
+                    snake_move_t = 0.01;
+                }
+                // sound_eat.play();
+                place_rabbit();
+            }
+
+            for(int i=1; i<snake.size; i++) {
+                if(row == snake[i].row && col == snake[i].col) {
+                    // sound_die.play();
+                    reset_snake();
+                    place_rabbit();
+                    snake_move_t_rem = 3;
+                    break;
+                 }
+            }
+            
+
+            drawing_area.queue_draw();
+        }
+
+        return window.get_visible(); // stop calling the function -> can end the application
     }
 
     public void redraw(Gtk.DrawingArea drawing_area, Cairo.Context cr, int width, int height)
@@ -162,29 +264,39 @@ class SnakeGame {
     public bool key_pressed (uint keyval, uint keycode, Gdk.ModifierType state)
     {
         //stdout.printf("keyval=%u, keycode=%u\n", keyval, keycode);
+        var head_dir = snake.size>0 ? snake[0].dir : "right";
+
         switch(keyval) {
             case Gdk.Key.a:
             case Gdk.Key.A:
             case Gdk.Key.Left:
-                print("left\n");
+                if (head_dir != "right") {
+                    snake_next_dir = "left";
+                }
             break;
 
             case Gdk.Key.d:
             case Gdk.Key.D:
             case Gdk.Key.Right:
-                print("right\n");
-            break;
+            if (head_dir != "left") {
+                snake_next_dir = "right";
+            }
+        break;
 
             case Gdk.Key.w:
             case Gdk.Key.W:
             case Gdk.Key.Up:
-                print("up\n");
+            if (head_dir != "down") {
+                snake_next_dir = "up";
+            }
             break;
 
             case Gdk.Key.s:
             case Gdk.Key.S:
             case Gdk.Key.Down:
-                print("down\n");
+            if (head_dir != "up") {
+                snake_next_dir = "down";
+            }
             break;
 
             case Gdk.Key.F5:
@@ -225,6 +337,8 @@ class SnakeGame {
         window.present ();
         drawing_area.set_focusable(true);
         drawing_area.grab_focus();
+
+        GLib.Idle.add(update);
     }
 }
 
