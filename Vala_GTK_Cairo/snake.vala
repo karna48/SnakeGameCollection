@@ -41,11 +41,25 @@ class SnakeGame {
     float snake_move_t;
     float snake_move_t_rem;
 
+    Gtk.ApplicationWindow window;
+    Gtk.DrawingArea drawing_area;
+    Gtk.EventControllerKey eventControllerKey;
+
+    Gtk.MediaFile sound_eat;
+    Gtk.MediaFile sound_die;
 
     public SnakeGame()
     {
         var snake_pixbuf = new Gdk.Pixbuf.from_file("../common_data/Snake.png");
-
+        
+        /*
+        //  GLib-GIO-CRITICAL **: 07:46:17.301: g_io_extension_point_get_extensions: assertion 'extension_point != NULL' failed
+        //  Gtk-ERROR **: 07:46:17.301: GTK was run without any GtkMediaFile extension being present. This must not happen.
+        sound_eat = Gtk.MediaFile.for_filename("../common_data/eat.wav");
+        sound_die = Gtk.MediaFile.for_filename("../common_data/die.wav");
+        */
+        
+    
         images = new Gee.HashMap<string, Gdk.Pixbuf>();
         set_all_squares = new Gee.HashSet<Square>();
 
@@ -93,7 +107,7 @@ class SnakeGame {
 
     public bool key_pressed (uint keyval, uint keycode, Gdk.ModifierType state)
     {
-        stdout.printf("keyval=%u, keycode=%u\n", keyval, keycode);
+        //stdout.printf("keyval=%u, keycode=%u\n", keyval, keycode);
         switch(keyval) {
             case Gdk.Key.a:
             case Gdk.Key.A:
@@ -118,39 +132,54 @@ class SnakeGame {
             case Gdk.Key.Down:
                 print("down\n");
             break;
+
+            case Gdk.Key.F5:
+                //sound_eat.play();
+                print("sorry, no sound: EAT!\n");
+            break;
+            case Gdk.Key.F6:
+                //sound_die.play();
+                print("sorry, no sound: DIE!\n");
+            break;
+
+            case Gdk.Key.Escape:
+                window.close();
+            break;
         }
         
         return true;
+    }
+
+    public void init_gui(Gtk.Application app)
+    {
+        window = new Gtk.ApplicationWindow (app);
+        window.title = "Snake Game (Vala, GTK+, Cairo)";
+        window.set_default_size(SnakeGame.WINDOW_WIDTH, SnakeGame.WINDOW_HEIGHT);
+        window.set_resizable(false);
+
+        drawing_area = new Gtk.DrawingArea();
+        drawing_area.set_content_width(SnakeGame.WINDOW_WIDTH);
+        drawing_area.set_content_width(SnakeGame.WINDOW_HEIGHT);
+
+        drawing_area.set_draw_func(redraw);
+
+        eventControllerKey = new Gtk.EventControllerKey();
+        drawing_area.add_controller(eventControllerKey);
+        eventControllerKey.key_pressed.connect(key_pressed);
+
+        window.set_child (drawing_area);
+        window.present ();
+        drawing_area.set_focusable(true);
+        drawing_area.grab_focus();
     }
 }
 
 
 int main (string[] argv) {
     var app = new Gtk.Application ("com.SnakeGameCollection.GtkApplication", GLib.ApplicationFlags.FLAGS_NONE);
-
     var snake_game = new SnakeGame();
 
-    app.activate.connect (() => {
-        var window = new Gtk.ApplicationWindow (app);
-        window.title = "Snake Game (Vala, GTK+, Cairo)";
-        window.set_default_size(SnakeGame.WINDOW_WIDTH, SnakeGame.WINDOW_HEIGHT);
-        window.set_resizable(false);
-
-        var drawing_area = new Gtk.DrawingArea();
-        drawing_area.set_content_width(SnakeGame.WINDOW_WIDTH);
-        drawing_area.set_content_width(SnakeGame.WINDOW_HEIGHT);
-
-        drawing_area.set_draw_func(snake_game.redraw);
-
-        var eventControllerKey = new Gtk.EventControllerKey();
-        drawing_area.add_controller(eventControllerKey);
-        eventControllerKey.key_pressed.connect(snake_game.key_pressed);
-
-        window.set_child (drawing_area);
-        window.present ();
-        drawing_area.set_focusable(true);
-        drawing_area.grab_focus();
-    });
+    app.activate.connect (() => { snake_game.init_gui(app); });
 
     return app.run (argv);
 }
