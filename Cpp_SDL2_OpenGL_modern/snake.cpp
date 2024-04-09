@@ -47,8 +47,9 @@ const std::vector<std::vector<std::string>> IMG_NAMES{
 };
 
 glm::mat4 setup_opengl( int width, int height );
+GLuint load_texture(const std::string &filename);
 
-auto g_img_rc = [](){
+const auto g_img_rc = [](){
     std::unordered_map<std::string, std::pair<int, int>> img_rc;
     int i = 0;
     for(auto const& names_row : IMG_NAMES)
@@ -79,11 +80,11 @@ struct SpriteVAO
 
     ~SpriteVAO()
     {
-        // delete VAO
+        // TODO: delete VAO properly? (... but the app is ending anyway!)
     }
     void next_frame(size_t keep) {
         if(quads.size() < keep*16) {
-            fprintf(stderr, "ERROR: SpriteVAO::next_frame  quads.size() < keep*16\n");
+            std::cerr << "ERROR: SpriteVAO::next_frame  quads.size() < keep*16" << std::endl;
         }
         quads.resize(keep*16);
     }
@@ -439,58 +440,15 @@ int main(int argc, char *argv[])
 
     // we need to create context without SDL2 renderer -> cannot use IMG_LoadTexture
     // because SDL2 renderer uses OpenGL 2.1 and we need modern 3.2 context
-
-    SDL_Surface *surface = IMG_Load("../common_data/Snake.png");
-    if (!surface) {
-        std::cerr << "Cannot load texture:" << IMG_GetError() << std::endl;
+    
+    GLuint texture = 0;
+    try {
+        texture = load_texture("../common_data/Snake.png");
+    } catch(const std::exception &e) {
         SDL_DestroyWindow(window);
-        SDL_Quit();        
+        SDL_Quit();
         return 1;
     }
-
-    GLuint texture;
-    GLenum textureFormat;
-
-    switch (surface->format->BytesPerPixel) {
-        case 4:
-            if (SDL_BYTEORDER == SDL_BIG_ENDIAN) {
-                textureFormat = GL_BGRA;
-                std::cout << "detected texture format: GL_BGRA\n";
-            } else {
-                textureFormat = GL_RGBA;
-                std::cout << "detected texture format: GL_RGBA\n";
-            }
-        break;
-
-        case 3:
-            if (SDL_BYTEORDER == SDL_BIG_ENDIAN) {
-                textureFormat = GL_BGR;
-                std::cout << "detected texture format: GL_BGR\n";
-            } else {
-                textureFormat = GL_RGB;
-                std::cout << "detected texture format: GL_RGB\n";
-            }
-        break;
-
-        default: {
-            std::cerr << "Wrong texture format, bytes per pixel=" << int(surface->format->BytesPerPixel) << std::endl;
-            SDL_DestroyWindow(window);
-            SDL_Quit();
-            return 1;
-        }
-    }
-
-    glGenTextures(1, &texture);
-    glBindTexture(GL_TEXTURE_2D, texture);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexImage2D(GL_TEXTURE_2D, 0, textureFormat, surface->w, surface->h, 
-        0, textureFormat, GL_UNSIGNED_BYTE, surface->pixels);
-
-    SDL_FreeSurface(surface);
 
     GLuint programId = LoadShaders("shader_vertex.glsl", "shader_fragment.glsl");
     GLuint uniformProjectionId = glGetUniformLocation(programId, "projection");
@@ -586,4 +544,53 @@ glm::mat4 setup_opengl( int width, int height )
     glViewport( 0, 0, width, height );
 
     return glm::ortho<float>(0, width, 0, height, -1, 1);
+}
+
+GLuint load_texture(const std::string &filename)
+{
+    SDL_Surface *surface = IMG_Load(filename.c_str());
+    if (!surface) {
+        std::cerr << "Cannot load texture:" << IMG_GetError() << std::endl;
+        throw  std::runtime_error("cannot open texture file");
+    }
+
+    GLuint texture;
+    GLenum textureFormat;
+
+    switch (surface->format->BytesPerPixel) {
+        case 4:
+            if (SDL_BYTEORDER == SDL_BIG_ENDIAN) {
+                textureFormat = GL_BGRA;
+            } else {
+                textureFormat = GL_RGBA;
+            }
+        break;
+
+        case 3:
+            if (SDL_BYTEORDER == SDL_BIG_ENDIAN) {
+                textureFormat = GL_BGR;
+            } else {
+                textureFormat = GL_RGB;
+            }
+        break;
+
+        default: {
+            std::cerr << "Wrong texture format, bytes per pixel=" << int(surface->format->BytesPerPixel) << std::endl;
+            throw std::runtime_error("wrong texture format, wrong Bpp");
+        }
+    }
+
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexImage2D(GL_TEXTURE_2D, 0, textureFormat, surface->w, surface->h, 
+        0, textureFormat, GL_UNSIGNED_BYTE, surface->pixels);
+
+    SDL_FreeSurface(surface);
+
+    return texture;
 }
