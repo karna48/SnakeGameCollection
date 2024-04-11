@@ -1,5 +1,2 @@
 snake
 *.o
-sdlopengl3_hello.c
-sdlopengl3_hello
-compile_hello.sh
