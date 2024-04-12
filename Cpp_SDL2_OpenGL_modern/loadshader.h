@@ -5,12 +5,18 @@
 #ifndef LoadShader_H__
 #define LoadShader_H__
 
-#ifndef GL_GLEXT_PROTOTYPES
-#define GL_GLEXT_PROTOTYPES
-#endif
+
+#if defined(__WIN32__) || defined(__WIN64__)
+#   include <glad/glad.h>
+#else
+#   ifndef GL_GLEXT_PROTOTYPES
+#   define GL_GLEXT_PROTOTYPES
+#   endif
+#endif // defined
 
 #include <SDL.h>
 #include <SDL_opengl.h>
+
 
 GLuint LoadShaders(const char * vertex_file_path,const char * fragment_file_path);
 
