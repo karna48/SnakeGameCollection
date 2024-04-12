@@ -7,7 +7,7 @@
 		<Option compiler="gcc" />
 		<Build>
 			<Target title="Debug">
-				<Option output="../snakegame_CppSDL2OpenGL_modern" prefix_auto="1" extension_auto="1" />
+				<Option output="../../Cpp_SDL2_OpenGL_modern/snake" prefix_auto="1" extension_auto="1" />
 				<Option working_dir=".." />
 				<Option object_output="obj/Debug/" />
 				<Option type="1" />
@@ -17,15 +17,18 @@
 					<Add option="-g" />
 				</Compiler>
 			</Target>
+			<Environment>
+				<Variable name="gcc" value='&quot;C:\Program Files\CodeBlocks\MinGW&quot;' />
+			</Environment>
 		</Build>
 		<Compiler>
 			<Add option="-Wall" />
 			<Add option="-m64" />
-			<Add directory="../glad/include" />
-			<Add directory="../glm-1.0.1-light" />
-			<Add directory="../SDL2-devel-2.30.2-mingw/SDL2-2.30.2/x86_64-w64-mingw32/include/SDL2" />
-			<Add directory="../SDL2_mixer-devel-2.8.0-mingw/SDL2_mixer-2.8.0/x86_64-w64-mingw32/include/SDL2" />
-			<Add directory="../SDL2_image-devel-2.8.2-mingw/SDL2_image-2.8.2/x86_64-w64-mingw32/include/SDL2" />
+			<Add directory="../deps" />
+			<Add directory="../deps/glad/include" />
+			<Add directory="../deps/SDL2-2.30.2/x86_64-w64-mingw32/include/SDL2" />
+			<Add directory="../deps/SDL2_mixer-2.8.0/x86_64-w64-mingw32/include/SDL2" />
+			<Add directory="../deps/SDL2_image-2.8.2/x86_64-w64-mingw32/include/SDL2" />
 		</Compiler>
 		<Linker>
 			<Add option="-static-libstdc++" />
@@ -41,15 +44,15 @@
 			<Add library="SDL2_mixer" />
 			<Add library="SDL2_image" />
 			<Add library="opengl32" />
-			<Add directory="../SDL2-devel-2.30.2-mingw/SDL2-2.30.2/x86_64-w64-mingw32/lib" />
-			<Add directory="../SDL2_image-devel-2.8.2-mingw/SDL2_image-2.8.2/x86_64-w64-mingw32/lib" />
-			<Add directory="../SDL2_mixer-devel-2.8.0-mingw/SDL2_mixer-2.8.0/x86_64-w64-mingw32/lib" />
+			<Add directory="../deps/SDL2-2.30.2/x86_64-w64-mingw32/lib" />
+			<Add directory="../deps/SDL2_image-2.8.2/x86_64-w64-mingw32/lib" />
+			<Add directory="../deps/SDL2_mixer-2.8.0/x86_64-w64-mingw32/lib" />
 		</Linker>
 		<ExtraCommands>
-			<Add after="XCOPY ..\SDL2-devel-2.30.2-mingw\SDL2-2.30.2\x86_64-w64-mingw32\bin\*.dll $(TARGET_OUTPUT_DIR) /D /Y" />
-			<Add after="XCOPY ..\SDL2_image-devel-2.8.2-mingw\SDL2_image-2.8.2\x86_64-w64-mingw32\bin\*.dll $(TARGET_OUTPUT_DIR) /D /Y" />
-			<Add after="XCOPY ..\SDL2_mixer-devel-2.8.0-mingw\SDL2_mixer-2.8.0\x86_64-w64-mingw32\bin\*.dll $(TARGET_OUTPUT_DIR) /D /Y" />
-			<Add after="XCOPY $(#gcc)\bin\libwinpthread-1.dll $(TARGET_OUTPUT_DIR) /D /Y" />
+			<Add after="XCOPY ..\deps\SDL2-2.30.2\x86_64-w64-mingw32\bin\*.dll ..\..\Cpp_SDL2_OpenGL_modern /D /Y" />
+			<Add after="XCOPY ..\deps\SDL2_image-2.8.2\x86_64-w64-mingw32\bin\*.dll ..\..\Cpp_SDL2_OpenGL_modern /D /Y" />
+			<Add after="XCOPY ..\deps\SDL2_mixer-2.8.0\x86_64-w64-mingw32\bin\*.dll ..\..\Cpp_SDL2_OpenGL_modern /D /Y" />
+			<Add after="XCOPY $(gcc)\bin\libwinpthread-1.dll ..\..\Cpp_SDL2_OpenGL_modern /D /Y" />
 			<Mode after="always" />
 		</ExtraCommands>
 		<Unit filename="../../Cpp_SDL2_OpenGL_modern/audiosystem.h" />
@@ -58,8 +61,8 @@
 		<Unit filename="../../Cpp_SDL2_OpenGL_modern/shader_fragment.glsl" />
 		<Unit filename="../../Cpp_SDL2_OpenGL_modern/shader_vertex.glsl" />
 		<Unit filename="../../Cpp_SDL2_OpenGL_modern/snake.cpp" />
-		<Unit filename="../glad/include/glad/glad.h" />
-		<Unit filename="../glad/src/glad.c">
+		<Unit filename="../deps/glad/include/glad/glad.h" />
+		<Unit filename="../deps/glad/src/glad.c">
 			<Option compilerVar="CC" />
 		</Unit>
 		<Extensions />

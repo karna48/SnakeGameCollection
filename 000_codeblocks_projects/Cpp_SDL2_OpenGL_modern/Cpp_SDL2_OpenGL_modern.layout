@@ -2,29 +2,19 @@
 <CodeBlocks_layout_file>
 	<FileVersion major="1" minor="0" />
 	<ActiveTarget name="Debug" />
-	<File name="..\glad\src\glad.c" open="0" top="0" tabpos="4" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="51684" topLine="990" />
-		</Cursor>
-	</File>
-	<File name="..\..\Cpp_SDL2_OpenGL_modern\loadshader.cpp" open="1" top="0" tabpos="3" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="549" topLine="0" />
-		</Cursor>
-	</File>
-	<File name="..\glad\include\glad\glad.h" open="0" top="0" tabpos="5" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="547" topLine="16" />
-		</Cursor>
-	</File>
-	<File name="..\..\Cpp_SDL2_OpenGL_modern\snake.cpp" open="1" top="1" tabpos="2" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="13784" topLine="436" />
-		</Cursor>
-	</File>
-	<File name="..\..\Cpp_SDL2_OpenGL_modern\loadshader.h" open="1" top="0" tabpos="1" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="..\..\Cpp_SDL2_OpenGL_modern\loadshader.h" open="0" top="0" tabpos="1" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
 			<Cursor1 position="260" topLine="0" />
+		</Cursor>
+	</File>
+	<File name="..\..\Cpp_SDL2_OpenGL_modern\snake.cpp" open="0" top="0" tabpos="2" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="1226" topLine="30" />
+		</Cursor>
+	</File>
+	<File name="..\..\Cpp_SDL2_OpenGL_modern\loadshader.cpp" open="0" top="0" tabpos="3" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="549" topLine="0" />
 		</Cursor>
 	</File>
 </CodeBlocks_layout_file>
