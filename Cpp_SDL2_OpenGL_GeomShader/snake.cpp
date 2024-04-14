@@ -66,16 +66,14 @@ const auto g_img_rc = [](){
 
 struct SpriteVAO
 {
-    GLuint quads_vertexbuffer, quads_vertexarrayobject, quads_triangle_index_buffer;
+    GLuint points_vertexbuffer, points_vertexarrayobject;
 
-    std::vector<GLfloat> quads;
-    std::vector<GLuint> indicies;
+    std::vector<GLfloat> points;
 
     SpriteVAO()
     {
-        glGenBuffers(1, &quads_vertexbuffer);
-        glGenVertexArrays(1, &quads_vertexarrayobject);
-        glGenBuffers(1, &quads_triangle_index_buffer);
+        glGenBuffers(1, &points_vertexbuffer);
+        glGenVertexArrays(1, &points_vertexarrayobject);
     }
 
     ~SpriteVAO()
@@ -83,51 +81,37 @@ struct SpriteVAO
         // TODO: delete VAO properly? (... but the app is ending anyway!)
     }
     void next_frame(size_t keep) {
-        if(quads.size() < keep*16) {
-            std::cerr << "ERROR: SpriteVAO::next_frame  quads.size() < keep*16" << std::endl;
+        if(points.size() < keep*3) {
+            std::cerr << "ERROR: SpriteVAO::next_frame  points.size() < keep*3" << std::endl;
         }
-        quads.resize(keep*16);
+        points.resize(keep*3);
     }
-    void quad(
-        float x1, float y1, 
-        float x2, float y2, 
-        float u1, float v1, 
-        float u2, float v2)
+    void add_point(float x1, float y1, int img_index)
     {
-        unsigned offset = quads.size() / 4;
-        quads.push_back(x1); quads.push_back(y1); quads.push_back(u1); quads.push_back(v1);
-        quads.push_back(x2); quads.push_back(y1); quads.push_back(u2); quads.push_back(v1);
-        quads.push_back(x2); quads.push_back(y2); quads.push_back(u2); quads.push_back(v2);
-        quads.push_back(x1); quads.push_back(y2); quads.push_back(u1); quads.push_back(v2);
-        indicies.push_back(offset+0);
-        indicies.push_back(offset+1);
-        indicies.push_back(offset+2);
-        indicies.push_back(offset+2);
-        indicies.push_back(offset+3);
-        indicies.push_back(offset+0);
+        points.push_back(x1); 
+        points.push_back(y1); 
+        points.push_back(img_index);
     }
     void draw()
     {
         // transfer data to VAO object
-        glBindVertexArray(quads_vertexarrayobject);
-        glBindBuffer(GL_ARRAY_BUFFER, quads_vertexbuffer);
-        glBufferData(GL_ARRAY_BUFFER, quads.size()*sizeof(GLfloat), (const void*)quads.data(), GL_DYNAMIC_DRAW);    
-
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, quads_triangle_index_buffer);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, indicies.size()*sizeof(GLuint), indicies.data(), GL_DYNAMIC_DRAW);        
+        glBindVertexArray(points_vertexarrayobject);
+        glBindBuffer(GL_ARRAY_BUFFER, points_vertexbuffer);
+        glBufferData(GL_ARRAY_BUFFER, points.size()*sizeof(GLfloat), (const void*)points.data(), GL_DYNAMIC_DRAW);    
 
         glEnableVertexAttribArray(0);
-        glBindBuffer(GL_ARRAY_BUFFER, quads_vertexbuffer);
+        glBindBuffer(GL_ARRAY_BUFFER, points_vertexbuffer);
         glVertexAttribPointer(
             0,                  // attribute 0. No particular reason for 0, but must match the layout in the shader.
-            4,                  // size;  x,y,u,v
+            3,                  // size;  x,y,img_index
             GL_FLOAT,           // type
             GL_FALSE,           // normalized?
             0,                  // stride
             (void*)0            // array buffer offset
         );
 
-        glDrawElements(GL_TRIANGLES, indicies.size(), GL_UNSIGNED_INT, nullptr);
+        glDrawArrays(GL_POINTS, 0, points.size()/3);
+//        glDrawElements(GL_TRIANGLES, indicies.size(), GL_UNSIGNED_INT, nullptr);
 
         glDisableVertexAttribArray(0);
     }
@@ -135,8 +119,8 @@ struct SpriteVAO
 
 struct Sprite
 {
-    float x, y;
-    float u1, v1, u2, v2;
+    float x, y; // corner position
+    float img_index;
     Sprite(int row, int column, const std::string& img_name)
     {
         move(row, column);
@@ -145,10 +129,7 @@ struct Sprite
     void set_image(const std::string& img_name)
     {
         auto [i, j] = g_img_rc.at(img_name);
-        u1 = 0.25f * j;
-        v1 = 0.25f * (i+1);
-        u2 = 0.25f * (j+1);
-        v2 = 0.25f * i;
+        img_index = i * 4 + j; 
     }
     void move(int row, int column)
     {
@@ -157,7 +138,7 @@ struct Sprite
     }
     void draw(SpriteVAO& sprite_vao)
     {
-        sprite_vao.quad(x, y, x+SPRITE_WIDTH, y+SPRITE_WIDTH, u1, v1, u2, v2);
+        sprite_vao.add_point(x, y, img_index);
     }
 };
 
@@ -264,7 +245,7 @@ public:
 
     void draw()
     {
-        if(sprite_vao.quads.size() == 0) {
+        if(sprite_vao.points.size() == 0) {
             for(auto &sprite : background) {
                 sprite.draw(sprite_vao);
             }
@@ -452,6 +433,7 @@ int main(int argc, char *argv[])
 
     GLuint programId = LoadShaders("shader_vertex.glsl", "shader_fragment.glsl", "shader_geom.glsl");
     GLuint uniformProjectionId = glGetUniformLocation(programId, "projection");
+    GLuint uniformSpriteSizeId = glGetUniformLocation(programId, "sprite_size");
     GLuint uniformTex0Id = glGetUniformLocation(programId, "tex0");
 
     if( Mix_OpenAudio( 44100, MIX_DEFAULT_FORMAT, 2, 2048 ) < 0 )
@@ -515,6 +497,8 @@ int main(int argc, char *argv[])
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, texture);
             glUniform1i(uniformTex0Id, 0);
+
+            glUniform1f(uniformSpriteSizeId, SPRITE_IMG_WIDTH*SPRITE_SCALE);  // NOTE: assuming is the same as SPRITE_IMG_HEIGHT
 
             glEnable(GL_BLEND);
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
