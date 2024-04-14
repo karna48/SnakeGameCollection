@@ -94,6 +94,7 @@ struct SpriteVAO
             std::cerr << "ERROR: SpriteVAO::next_frame  quads.size() < keep*16" << std::endl;
         }
         quads.resize(keep*16);
+        indicies.resize(keep*6);
     }
     void quad(
         float x1, float y1,

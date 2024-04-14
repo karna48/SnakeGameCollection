@@ -46,7 +46,7 @@ const std::string DIR_UP{"up"};
 const std::string DIR_DOWN{"down"};
 
 const std::vector<std::vector<std::string>> IMG_NAMES{
-    {"head_up", "head_right", "head_down", "head_left"}, 
+    {"head_up", "head_right", "head_down", "head_left"},
     {"tail_up", "tail_right", "tail_down", "tail_left"},
     {"turn_1", "turn_2", "turn_3", "turn_4"},
     {"vertical", "horizontal", "rabbit", "grass"}
@@ -94,8 +94,8 @@ struct SpriteVAO
     }
     void add_point(float x1, float y1, int img_index)
     {
-        points.push_back(x1); 
-        points.push_back(y1); 
+        points.push_back(x1);
+        points.push_back(y1);
         points.push_back(img_index);
     }
     void draw()
@@ -103,7 +103,7 @@ struct SpriteVAO
         // transfer data to VAO object
         glBindVertexArray(points_vertexarrayobject);
         glBindBuffer(GL_ARRAY_BUFFER, points_vertexbuffer);
-        glBufferData(GL_ARRAY_BUFFER, points.size()*sizeof(GLfloat), (const void*)points.data(), GL_DYNAMIC_DRAW);    
+        glBufferData(GL_ARRAY_BUFFER, points.size()*sizeof(GLfloat), (const void*)points.data(), GL_DYNAMIC_DRAW);
 
         glEnableVertexAttribArray(0);
         glBindBuffer(GL_ARRAY_BUFFER, points_vertexbuffer);
@@ -135,7 +135,7 @@ struct Sprite
     void set_image(const std::string& img_name)
     {
         auto [i, j] = g_img_rc.at(img_name);
-        img_index = i * 4 + j; 
+        img_index = i * 4 + j;
     }
     void move(int row, int column)
     {
@@ -155,7 +155,7 @@ struct SnakePart
     Sprite sprite;
     SnakePart(int row, int col, const std::string& dir, const std::string& img_name):
         row(row), col(col), dir(dir), sprite(row, col, img_name)
-    {}    
+    {}
 };
 
 struct Rabbit
@@ -216,11 +216,11 @@ public:
 
         // std::set is sorted, don't need to make a copy in std::vector and sort
 
-        auto it=std::set_difference 
-            (set_all_squares.begin(), set_all_squares.end(), 
-             set_snake_squares.begin(), set_snake_squares.end(), 
+        auto it=std::set_difference
+            (set_all_squares.begin(), set_all_squares.end(),
+             set_snake_squares.begin(), set_snake_squares.end(),
              free_squares.begin());
-        
+
         free_squares.resize(it-free_squares.begin());
 
         //std::cout << "place_rabbit  free_squares.size(): " << free_squares.size() << "\n";
@@ -383,7 +383,7 @@ int main(int argc, char *argv[])
          std::cerr << "SDL initialization failed: " << SDL_GetError() << std::endl;
          return 1;
     }
-    
+
     SDL_version compiled, linked;
 
     SDL_VERSION(&compiled);
@@ -400,9 +400,9 @@ int main(int argc, char *argv[])
     IMG_Init(IMG_INIT_PNG);
 
     SDL_Window *window = SDL_CreateWindow(
-        "Snake game (C++ with SDL2/OpenGL [modern])", 
-        SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 
-        WINDOW_WIDTH, WINDOW_HEIGHT, 
+        "Snake game (C++ with SDL2/OpenGL [modern])",
+        SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
+        WINDOW_WIDTH, WINDOW_HEIGHT,
         SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_OPENGL);
 
     if(!window) {
@@ -417,17 +417,27 @@ int main(int argc, char *argv[])
         std::cerr << "Cannot create GL context: " << SDL_GetError() << std::endl;
         SDL_DestroyWindow(window);
         SDL_Quit();
-        return 1;        
+        return 1;
     }
 
     SDL_GL_MakeCurrent(window, glcontext);
+
+#   if defined(__WIN32__) || defined(__WIN64__)
+    {
+        int error_code=gladLoadGLLoader(SDL_GL_GetProcAddress);
+        if(error_code <= 0) {
+            std::cout << "Failed to initialize GLAD, error code=" << error_code << std::endl;
+            return -1;
+        }
+    }
+#   endif
 
     glm::mat4 projection_matrix = setup_opengl(WINDOW_WIDTH, WINDOW_HEIGHT);
     std::cout << "opengl setup with projection matrix done" << std::endl;
 
     // we need to create context without SDL2 renderer -> cannot use IMG_LoadTexture
     // because SDL2 renderer uses OpenGL 2.1 and we need modern 3.2 context
-    
+
     GLuint texture = 0;
     try {
         texture = load_texture("../common_data/Snake.png");
@@ -469,7 +479,7 @@ int main(int argc, char *argv[])
                             case SDLK_RIGHT: snake_game.key_input(DIR_RIGHT);  break;
                             case SDLK_UP:    snake_game.key_input(DIR_UP);  break;
                             case SDLK_DOWN:  snake_game.key_input(DIR_DOWN);  break;
-                            case SDLK_ESCAPE: 
+                            case SDLK_ESCAPE:
                                 done = true;
                             default:
                                 ;
@@ -489,7 +499,7 @@ int main(int argc, char *argv[])
                 Uint32 ticks_repaired = now_ticks + (4294967295 - last_ticks);
                 dt = ticks_repaired / 1000.0f;
             }
-            
+
             last_ticks = now_ticks;
 
             snake_game.update(dt);
@@ -577,7 +587,7 @@ GLuint load_texture(const std::string &filename)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexImage2D(GL_TEXTURE_2D, 0, textureFormat, surface->w, surface->h, 
+    glTexImage2D(GL_TEXTURE_2D, 0, textureFormat, surface->w, surface->h,
         0, textureFormat, GL_UNSIGNED_BYTE, surface->pixels);
 
     SDL_FreeSurface(surface);

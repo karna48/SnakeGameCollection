@@ -337,6 +337,10 @@ int main(int argc, char *argv[])
     std::cout << "      compiled: " << int(compiled.major) << "." << int(compiled.minor) << "." << int(compiled.patch) << "\n";
     std::cout << "        linked: " << int(linked.major) << "." << int(linked.minor) << "." << int(linked.patch) << std::endl;
 
+    SDL_GL_SetAttribute( SDL_GL_CONTEXT_MAJOR_VERSION, 2 );
+    SDL_GL_SetAttribute( SDL_GL_CONTEXT_MINOR_VERSION, 0 );
+    SDL_GL_SetAttribute( SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_COMPATIBILITY );
+
     IMG_Init(IMG_INIT_PNG);
 
     SDL_Window *window = SDL_CreateWindow(
