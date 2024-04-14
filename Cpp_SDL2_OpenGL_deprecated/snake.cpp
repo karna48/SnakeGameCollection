@@ -12,6 +12,15 @@ TODO: SDL_ttf  length label, FPS counter
 #include <random>
 #include <algorithm>
 #include <chrono>
+
+#if defined(__WIN32__) || defined(__WIN64__)
+#   include <glad/glad.h>
+#else
+#   ifndef GL_GLEXT_PROTOTYPES
+#   define GL_GLEXT_PROTOTYPES
+#   endif
+#endif // defined
+
 #include <SDL.h>
 #include <SDL_image.h>
 #include <SDL_mixer.h>
@@ -337,10 +346,6 @@ int main(int argc, char *argv[])
     std::cout << "      compiled: " << int(compiled.major) << "." << int(compiled.minor) << "." << int(compiled.patch) << "\n";
     std::cout << "        linked: " << int(linked.major) << "." << int(linked.minor) << "." << int(linked.patch) << std::endl;
 
-    SDL_GL_SetAttribute( SDL_GL_CONTEXT_MAJOR_VERSION, 2 );
-    SDL_GL_SetAttribute( SDL_GL_CONTEXT_MINOR_VERSION, 0 );
-    SDL_GL_SetAttribute( SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_COMPATIBILITY );
-
     IMG_Init(IMG_INIT_PNG);
 
     SDL_Window *window = SDL_CreateWindow(
@@ -356,6 +361,16 @@ int main(int argc, char *argv[])
     }
 
     SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+
+#   if defined(__WIN32__) || defined(__WIN64__)
+    {
+        int error_code=gladLoadGLLoader(SDL_GL_GetProcAddress);
+        if(error_code <= 0) {
+            std::cout << "Failed to initialize GLAD, error code=" << error_code << std::endl;
+            return -1;
+        }
+    }
+#   endif
 
     setup_opengl(WINDOW_WIDTH, WINDOW_HEIGHT);
 
@@ -444,7 +459,7 @@ void setup_opengl( int width, int height )
     glFrontFace( GL_CCW );
     glEnable( GL_CULL_FACE );
 
-    glClearColor( 0, 0, 0, 0 );
+    glClearColor( 0.7, 0.7, 1, 0 );
 
     glViewport( 0, 0, width, height );
 

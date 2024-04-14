@@ -400,7 +400,7 @@ int main(int argc, char *argv[])
     IMG_Init(IMG_INIT_PNG);
 
     SDL_Window *window = SDL_CreateWindow(
-        "Snake game (C++ with SDL2/OpenGL [modern])",
+        "Snake game (C++ with SDL2/OpenGL [geometry shader])",
         SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
         WINDOW_WIDTH, WINDOW_HEIGHT,
         SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_OPENGL);
