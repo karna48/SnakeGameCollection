@@ -31,7 +31,7 @@ const std::string DIR_UP{"up"};
 const std::string DIR_DOWN{"down"};
 
 const std::vector<std::vector<std::string>> IMG_NAMES{
-    {"head_up", "head_right", "head_down", "head_left"}, 
+    {"head_up", "head_right", "head_down", "head_left"},
     {"tail_up", "tail_right", "tail_down", "tail_left"},
     {"turn_1", "turn_2", "turn_3", "turn_4"},
     {"vertical", "horizontal", "rabbit", "grass"}
@@ -104,7 +104,7 @@ struct SnakePart
     Sprite sprite;
     SnakePart(int row, int col, const std::string& dir, const std::string& img_name):
         row(row), col(col), dir(dir), sprite(row, col, img_name)
-    {}    
+    {}
 };
 
 struct Rabbit
@@ -163,11 +163,11 @@ public:
 
         // std::set is sorted, don't need to make a copy in std::vector and sort
 
-        auto it=std::set_difference 
-            (set_all_squares.begin(), set_all_squares.end(), 
-             set_snake_squares.begin(), set_snake_squares.end(), 
+        auto it=std::set_difference
+            (set_all_squares.begin(), set_all_squares.end(),
+             set_snake_squares.begin(), set_snake_squares.end(),
              free_squares.begin());
-        
+
         free_squares.resize(it-free_squares.begin());
 
         //std::cout << "place_rabbit  free_squares.size(): " << free_squares.size() << "\n";
@@ -321,7 +321,7 @@ public:
     }
 };
 
-int main(/*int argc, char *argv[]*/)
+int main(int argc, char *argv[])
 {
     if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_EVENTS)) {
          std::cerr << "SDL initialization failed: " << SDL_GetError() << std::endl;
@@ -340,9 +340,9 @@ int main(/*int argc, char *argv[]*/)
     IMG_Init(IMG_INIT_PNG);
 
     SDL_Window *window = SDL_CreateWindow(
-        "Snake game (C++ with SDL2/OpenGL [deprecated])", 
-        SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 
-        WINDOW_WIDTH, WINDOW_HEIGHT, 
+        "Snake game (C++ with SDL2/OpenGL [deprecated])",
+        SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
+        WINDOW_WIDTH, WINDOW_HEIGHT,
         SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_OPENGL);
 
     if(!window) {
@@ -392,7 +392,7 @@ int main(/*int argc, char *argv[]*/)
                             case SDLK_RIGHT: snake_game.key_input(DIR_RIGHT);  break;
                             case SDLK_UP:    snake_game.key_input(DIR_UP);  break;
                             case SDLK_DOWN:  snake_game.key_input(DIR_DOWN);  break;
-                            case SDLK_ESCAPE: 
+                            case SDLK_ESCAPE:
                                 done = true;
                             default:
                                 ;
@@ -412,7 +412,7 @@ int main(/*int argc, char *argv[]*/)
                 Uint32 ticks_repaired = now_ticks + (4294967295 - last_ticks);
                 dt = ticks_repaired / 1000.0f;
             }
-            
+
             last_ticks = now_ticks;
 
             snake_game.update(dt);

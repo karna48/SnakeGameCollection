@@ -2,13 +2,13 @@
 <CodeBlocks_project_file>
 	<FileVersion major="1" minor="6" />
 	<Project>
-		<Option title="snakegame_Cpp_SDL2_OpenGL_modern" />
+		<Option title="snakegame_Cpp_SDL2_OpenGL_deprecated" />
 		<Option pch_mode="2" />
 		<Option compiler="gcc" />
 		<Build>
 			<Target title="Debug">
-				<Option output="../../Cpp_SDL2_OpenGL_modern/snake" prefix_auto="1" extension_auto="1" />
-				<Option working_dir="../../Cpp_SDL2_OpenGL_modern" />
+				<Option output="../../Cpp_SDL2_OpenGL_deprecated/snake" prefix_auto="1" extension_auto="1" />
+				<Option working_dir="../../Cpp_SDL2_OpenGL_deprecated" />
 				<Option object_output="obj/Debug/" />
 				<Option type="1" />
 				<Option compiler="gcc" />
@@ -49,22 +49,14 @@
 			<Add directory="../deps/SDL2_mixer-2.8.0/x86_64-w64-mingw32/lib" />
 		</Linker>
 		<ExtraCommands>
-			<Add after="XCOPY ..\deps\SDL2-2.30.2\x86_64-w64-mingw32\bin\*.dll ..\..\Cpp_SDL2_OpenGL_modern /D /Y" />
-			<Add after="XCOPY ..\deps\SDL2_image-2.8.2\x86_64-w64-mingw32\bin\*.dll ..\..\Cpp_SDL2_OpenGL_modern /D /Y" />
-			<Add after="XCOPY ..\deps\SDL2_mixer-2.8.0\x86_64-w64-mingw32\bin\*.dll ..\..\Cpp_SDL2_OpenGL_modern /D /Y" />
-			<Add after="XCOPY $(gcc)\bin\libwinpthread-1.dll ..\..\Cpp_SDL2_OpenGL_modern /D /Y" />
+			<Add after="XCOPY ..\deps\SDL2-2.30.2\x86_64-w64-mingw32\bin\*.dll ..\..\Cpp_SDL2_OpenGL_deprecated /D /Y" />
+			<Add after="XCOPY ..\deps\SDL2_image-2.8.2\x86_64-w64-mingw32\bin\*.dll ..\..\Cpp_SDL2_OpenGL_deprecated /D /Y" />
+			<Add after="XCOPY ..\deps\SDL2_mixer-2.8.0\x86_64-w64-mingw32\bin\*.dll ..\..\Cpp_SDL2_OpenGL_deprecated /D /Y" />
+			<Add after="XCOPY $(gcc)\bin\libwinpthread-1.dll ..\..\Cpp_SDL2_OpenGL_deprecated /D /Y" />
 			<Mode after="always" />
 		</ExtraCommands>
-		<Unit filename="../../Cpp_SDL2_OpenGL_modern/audiosystem.h" />
-		<Unit filename="../../Cpp_SDL2_OpenGL_modern/loadshader.cpp" />
-		<Unit filename="../../Cpp_SDL2_OpenGL_modern/loadshader.h" />
-		<Unit filename="../../Cpp_SDL2_OpenGL_modern/shader_fragment.glsl" />
-		<Unit filename="../../Cpp_SDL2_OpenGL_modern/shader_vertex.glsl" />
-		<Unit filename="../../Cpp_SDL2_OpenGL_modern/snake.cpp" />
-		<Unit filename="../deps/glad/include/glad/glad.h" />
-		<Unit filename="../deps/glad/src/glad.c">
-			<Option compilerVar="CC" />
-		</Unit>
+		<Unit filename="../../Cpp_SDL2_OpenGL_deprecated/audiosystem.h" />
+		<Unit filename="../../Cpp_SDL2_OpenGL_deprecated/snake.cpp" />
 		<Extensions />
 	</Project>
 </CodeBlocks_project_file>

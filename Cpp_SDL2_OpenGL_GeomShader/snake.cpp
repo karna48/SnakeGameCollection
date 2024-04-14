@@ -19,7 +19,13 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-#define GL_GLEXT_PROTOTYPES
+#if defined(__WIN32__) || defined(__WIN64__)
+#   include <glad/glad.h>
+#else
+#   ifndef GL_GLEXT_PROTOTYPES
+#   define GL_GLEXT_PROTOTYPES
+#   endif
+#endif // defined
 
 #include <SDL.h>
 #include <SDL_image.h>
