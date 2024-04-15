@@ -57,6 +57,10 @@
 		</ExtraCommands>
 		<Unit filename="../../Cpp_SDL2_OpenGL_deprecated/audiosystem.h" />
 		<Unit filename="../../Cpp_SDL2_OpenGL_deprecated/snake.cpp" />
+		<Unit filename="../deps/glad_1.3/include/glad/glad.h" />
+		<Unit filename="../deps/glad_1.3/src/glad.c">
+			<Option compilerVar="CC" />
+		</Unit>
 		<Extensions />
 	</Project>
 </CodeBlocks_project_file>
