@@ -27,7 +27,6 @@
 #   endif
 #endif // defined
 
-#define GL_GLEXT_PROTOTYPES
 #include <SDL.h>
 #include <SDL_image.h>
 #include <SDL_mixer.h>
@@ -603,7 +602,6 @@ GLuint load_texture(const std::string &filename)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexImage2D(GL_TEXTURE_2D, 0, textureFormat, surface->w, surface->h,
         0, textureFormat, GL_UNSIGNED_BYTE, surface->pixels);
 
@@ -611,3 +609,4 @@ GLuint load_texture(const std::string &filename)
 
     return texture;
 }
+

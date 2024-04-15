@@ -18,13 +18,13 @@ TODO: SDL_ttf  length label, FPS counter
 #else
 #   ifndef GL_GLEXT_PROTOTYPES
 #   define GL_GLEXT_PROTOTYPES
+#   include <GL/gl.h>
 #   endif
 #endif // defined
 
 #include <SDL.h>
 #include <SDL_image.h>
 #include <SDL_mixer.h>
-#include <GL/gl.h>
 
 #include "audiosystem.h"
 
@@ -46,9 +46,10 @@ const std::vector<std::vector<std::string>> IMG_NAMES{
     {"vertical", "horizontal", "rabbit", "grass"}
 };
 
+GLuint load_texture(const std::string &filename);
 void setup_opengl( int width, int height );
 
-auto g_img_rc = [](){
+const auto g_img_rc = [](){
     std::unordered_map<std::string, std::pair<int, int>> img_rc;
     int i = 0;
     for(auto const& names_row : IMG_NAMES)
@@ -337,14 +338,17 @@ int main(int argc, char *argv[])
          return 1;
     }
 
-    SDL_version compiled;
-    SDL_version linked;
+    SDL_version compiled, linked;
 
     SDL_VERSION(&compiled);
     SDL_GetVersion(&linked);
     std::cout << "SDL Version:\n";
     std::cout << "      compiled: " << int(compiled.major) << "." << int(compiled.minor) << "." << int(compiled.patch) << "\n";
     std::cout << "        linked: " << int(linked.major) << "." << int(linked.minor) << "." << int(linked.patch) << std::endl;
+
+    SDL_GL_SetAttribute( SDL_GL_CONTEXT_MAJOR_VERSION, 1 );
+    SDL_GL_SetAttribute( SDL_GL_CONTEXT_MINOR_VERSION, 3 );
+    SDL_GL_SetAttribute( SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE );
 
     IMG_Init(IMG_INIT_PNG);
 
@@ -360,7 +364,16 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+    // we need to create context without SDL renderer -> cannot use IMG_LoadTexture
+    SDL_GLContext glcontext = SDL_GL_CreateContext(window);
+    if(!glcontext) {
+        std::cerr << "Cannot create GL context: " << SDL_GetError() << std::endl;
+        SDL_DestroyWindow(window);
+        SDL_Quit();
+        return 1;
+    }
+
+    SDL_GL_MakeCurrent(window, glcontext);
 
 #   if defined(__WIN32__) || defined(__WIN64__)
     {
@@ -374,16 +387,20 @@ int main(int argc, char *argv[])
 
     setup_opengl(WINDOW_WIDTH, WINDOW_HEIGHT);
 
-    SDL_Texture *texture = IMG_LoadTexture(renderer, "../common_data/Snake.png");
-    if (!texture) {
-        std::cerr << "Cannot load texture:" << IMG_GetError() << std::endl;
+    GLuint texture = 0;
+    try {
+        texture = load_texture("../common_data/Snake.png");
+    } catch(const std::exception &e) {
+        SDL_DestroyWindow(window);
+        SDL_Quit();
         return 1;
     }
 
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    int error_code = glGetError();
+    if(error_code) {
+        std::cout << "glGetError -> " << error_code << std::endl;
+    }
 
-    SDL_GL_BindTexture(texture, NULL, NULL);
 
     if( Mix_OpenAudio( 44100, MIX_DEFAULT_FORMAT, 2, 2048 ) < 0 )
     {
@@ -436,12 +453,19 @@ int main(int argc, char *argv[])
 
             snake_game.update(dt);
 
+
+            int error_code = glGetError();
+            if(error_code) {
+                std::cout << "glGetError -> " << error_code << std::endl;
+            }
+
+            glBindTexture(GL_TEXTURE_2D, texture);
+
             snake_game.draw();
             SDL_GL_SwapWindow(window);
         }
     }
 
-    SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
 
     Mix_Quit();
@@ -460,6 +484,7 @@ void setup_opengl( int width, int height )
     glEnable( GL_CULL_FACE );
 
     glClearColor( 0.7, 0.7, 1, 0 );
+    glDepthMask(GL_FALSE);
 
     glViewport( 0, 0, width, height );
 
@@ -470,4 +495,54 @@ void setup_opengl( int width, int height )
 
     glMatrixMode( GL_MODELVIEW );
 
+    glEnable(GL_TEXTURE_2D);  // important for deprecated mode
 }
+
+GLuint load_texture(const std::string &filename)
+{
+    SDL_Surface *surface = IMG_Load(filename.c_str());
+    if (!surface) {
+        std::cerr << "Cannot load texture:" << IMG_GetError() << std::endl;
+        throw  std::runtime_error("cannot open texture file");
+    }
+
+    GLuint texture;
+    GLenum textureFormat;
+
+    switch (surface->format->BytesPerPixel) {
+        case 4:
+            if (SDL_BYTEORDER == SDL_BIG_ENDIAN) {
+                textureFormat = GL_BGRA;
+            } else {
+                textureFormat = GL_RGBA;
+            }
+        break;
+
+        case 3:
+            if (SDL_BYTEORDER == SDL_BIG_ENDIAN) {
+                textureFormat = GL_BGR;
+            } else {
+                textureFormat = GL_RGB;
+            }
+        break;
+
+        default: {
+            std::cerr << "Wrong texture format, bytes per pixel=" << int(surface->format->BytesPerPixel) << std::endl;
+            throw std::runtime_error("wrong texture format, wrong Bpp");
+        }
+    }
+
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexImage2D(GL_TEXTURE_2D, 0, textureFormat, surface->w, surface->h,
+        0, textureFormat, GL_UNSIGNED_BYTE, surface->pixels);
+
+    SDL_FreeSurface(surface);
+
+    return texture;
+}
+
