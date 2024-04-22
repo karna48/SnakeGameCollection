@@ -75,6 +75,10 @@ end
 
 include("init_utils.jl")
 
+sound_die = Sound(joinpath("..", "common_data", "die.wav"))
+sound_eat = Sound(joinpath("..", "common_data", "eat.wav"))
+
+
 while !GLFW.WindowShouldClose(window)
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
@@ -97,10 +101,29 @@ while !GLFW.WindowShouldClose(window)
     end
 
     if get(g_keys, GLFW.KEY_P, false)
-        play(sound_die)
+        @Threads.spawn load_play(joinpath("..", "common_data", "die.wav"))
         g_keys[GLFW.KEY_P] = false
     end
-    
+
+    if get(g_keys, GLFW.KEY_K, false)
+        @Threads.spawn play(sound_die)
+        g_keys[GLFW.KEY_K] = false
+    end
+
+
+    if get(g_keys, GLFW.KEY_O, false)
+        #@Threads.spawn play(sound_eat)
+        @Threads.spawn load_play(joinpath("..", "common_data", "eat.wav"))
+        g_keys[GLFW.KEY_O] = false
+    end
+
+    if get(g_keys, GLFW.KEY_L, false)
+        @Threads.spawn play(sound_eat)
+        #@Threads.spawn load_play(joinpath("..", "common_data", "eat.wav"))
+        g_keys[GLFW.KEY_L] = false
+    end
+
+
     if get(g_keys, GLFW.KEY_X, false)
         snake[1].col += 1
         g_keys[GLFW.KEY_X] = false

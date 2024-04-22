@@ -3,16 +3,22 @@ import WAV
 struct Sound
     fs
     y
+    filename
     function Sound(filename::String)
         y, fs = WAV.wavread(filename)
-        new(fs, y)
+        new(fs, y, filename)
     end
 end
 
 function play(sound::Sound)
-    # BLOCKING, no luck using threads :(
-    WAV.wavplay(sound.y, sound.fs)
+    println("start playing ", sound.filename)
+    #WAV.wavplay(sound.y, sound.fs)
+    sleep(2)
+    println("end playing ", sound.filename)
 end
 
-sound_die = Sound(joinpath("..", "common_data", "die.wav"))
-sound_eat = Sound(joinpath("..", "common_data", "eat.wav"))
+function load_play(filename::String)
+    y, fs = WAV.wavread(filename)
+    WAV.wavplay(y, fs)
+end
+
