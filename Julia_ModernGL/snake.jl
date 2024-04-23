@@ -9,6 +9,11 @@ include("audiosystem.jl")
 
 const GLA = GLAbstraction
 
+common_data_dir = joinpath("..", "common_data")
+
+sound_die = Sound(joinpath(common_data_dir, "die.wav"))
+sound_eat = Sound(joinpath(common_data_dir, "eat.wav"))
+
 const RESOLUTION = (1200, 800)
 const SPRITE_IMG_WIDTH = 16
 const SPRITE_IMG_HEIGHT = 16
@@ -44,25 +49,36 @@ mutable struct Rabbit
     col::Int
 end
 
-snake = Vector{SnakePart}()
+mutable struct Snake
+    parts::Vector{SnakePart}
+    dir_next::String
+    move_t_rem::Float32
+    move_t::Float32
+    function Snake()
+        new(Vector{SnakePart}(), "right", 3, 0.2)
+    end
+end
+
+snake = Snake()
 rabbit = Rabbit(0, 0)
-snake_dir_next = "right"
 
 function reset_snake()
-    empty!(snake)
+    empty!(snake.parts)
     row = div(ROWS, 3)
     col = div(COLUMNS, 3)
     for (i, s) in enumerate(["head_right" "horizontal" "tail_right"])
         sp = SnakePart(row, col - i + 1, "right", s)
-        push!(snake, sp)
+        push!(snake.parts, sp)
     end
+    snake.move_t = 0.2
+    snake.move_t_rem = 3
 end
 
 reset_snake()
 
 g_keys = Dict()  # GLFW.GetKey did not work for me
 
-snake_img = Images.load(joinpath("..", "common_data", "Snake.png"))
+snake_img = Images.load(joinpath(common_data_dir, "Snake.png"))
 
 window = GLFW.Window(name="Snake game (Julia, ModernGL, GLAbstraction)", resolution=RESOLUTION)
 GLA.set_context!(window)
@@ -75,8 +91,6 @@ end
 
 include("init_utils.jl")
 
-sound_die = Sound(joinpath("..", "common_data", "die.wav"))
-sound_eat = Sound(joinpath("..", "common_data", "eat.wav"))
 
 
 while !GLFW.WindowShouldClose(window)
@@ -84,7 +98,7 @@ while !GLFW.WindowShouldClose(window)
 
     resize!(points, ROWS*COLUMNS)
     push!(points, (rabbit.col*SPRITE_WIDTH, rabbit.row*SPRITE_HEIGHT, img_idx("rabbit")))
-    for sp in snake
+    for sp in snake.parts
         push!(points, (sp.col*SPRITE_WIDTH, sp.row*SPRITE_HEIGHT, img_idx(sp.sprite_name)))
     end
 
@@ -125,7 +139,7 @@ while !GLFW.WindowShouldClose(window)
 
 
     if get(g_keys, GLFW.KEY_X, false)
-        snake[1].col += 1
+        snake.parts[1].col += 1
         g_keys[GLFW.KEY_X] = false
     end
     

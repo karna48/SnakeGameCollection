@@ -12,8 +12,7 @@ end
 
 function play(sound::Sound)
     println("start playing ", sound.filename)
-    #WAV.wavplay(sound.y, sound.fs)
-    sleep(2)
+    WAV.wavplay(sound.y, sound.fs)
     println("end playing ", sound.filename)
 end
 
