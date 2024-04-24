@@ -1,5 +1,5 @@
 
-# playing sound in other thread did not work!
+# playing sound in other thread did not work! (only via load_play(Sound))
 # GLFW.GetKey did not work for me therefore g_keys::Dict
 # uses geometry shader
 
@@ -12,6 +12,7 @@ const GLA = GLAbstraction
 
 common_data_dir = joinpath("..", "common_data")
 
+# not working in other thread!
 sound_die = Sound(joinpath(common_data_dir, "die.wav"))
 sound_eat = Sound(joinpath(common_data_dir, "eat.wav"))
 
@@ -23,7 +24,7 @@ const SPRITE_WIDTH = SPRITE_SCALE * SPRITE_IMG_WIDTH
 const SPRITE_HEIGHT = SPRITE_SCALE * SPRITE_IMG_HEIGHT
 const ROWS = div(RESOLUTION[2], SPRITE_HEIGHT)
 const COLUMNS = div(RESOLUTION[1], SPRITE_WIDTH)
-const ALL_SQUARES_SET = Set((i, j) for i in 1:ROWS, j in 1:COLUMNS)
+const ALL_SQUARES_SET = Set((i, j) for i in 0:ROWS-1, j in 0:COLUMNS-1)
 
 const IMG_NAMES = [
     "head_up" "head_right" "head_down" "head_left";
@@ -139,7 +140,10 @@ while !GLFW.WindowShouldClose(window)
             img_name = if head_dir == "up" "turn_1" else "turn_2" end
         elseif old_head.dir == "right"
             img_name = if head_dir == "up" "turn_4" else "turn_3" end
+        else
+            error("unknown snake direction")            
         end
+
         old_head.sprite_name = img_name
 
         insert!(snake.parts, 1, SnakePart(row, col, head_dir, "head_"*head_dir))
@@ -147,7 +151,7 @@ while !GLFW.WindowShouldClose(window)
         rabbit_eaten = row == rabbit.row && col == rabbit.col
         if !rabbit_eaten
             pop!(snake.parts)
-            snake.parts[length(snake.parts)].dir = "tail_"*snake.parts[length(snake.parts)-1].dir
+            snake.parts[end].sprite_name = "tail_"*snake.parts[end-1].dir
         else
             snake.move_t -= 0.005
             if snake.move_t < 0.01
@@ -156,6 +160,15 @@ while !GLFW.WindowShouldClose(window)
             # TODO: play(sound_eat): why it freezes the thread????
             @Threads.spawn load_play(joinpath(common_data_dir, "eat.wav"))
             place_rabbit()
+        end
+
+        for sp in snake.parts[2:end]
+            if row == sp.row && col == sp.col
+                # TODO: play(sound_eat): why it freezes the thread????
+                @Threads.spawn load_play(joinpath(common_data_dir, "die.wav"))
+                reset_snake()
+                place_rabbit()
+            end
         end
     end
 
@@ -174,6 +187,43 @@ while !GLFW.WindowShouldClose(window)
     GLA.draw(vao)
     GLFW.SwapBuffers(window)
     GLFW.PollEvents()
+
+    for key in (GLFW.KEY_UP, GLFW.KEY_KP_8, GLFW.KEY_W)
+        if get(g_keys, key, false)
+            g_keys[key] = false
+            if head_dir != "down"
+                snake.dir_next = "up"
+            end
+        end
+    end
+
+    for key in (GLFW.KEY_DOWN, GLFW.KEY_KP_5, GLFW.KEY_KP_2, GLFW.KEY_W)
+        if get(g_keys, key, false)
+            g_keys[key] = false
+            if head_dir != "up"
+                snake.dir_next = "down"
+            end
+        end
+    end
+
+    for key in (GLFW.KEY_LEFT, GLFW.KEY_KP_4, GLFW.KEY_A)
+        if get(g_keys, key, false)
+            g_keys[key] = false
+            if head_dir != "right"
+                snake.dir_next = "left"
+            end
+        end
+    end
+
+    for key in (GLFW.KEY_RIGHT, GLFW.KEY_KP_6, GLFW.KEY_D)
+        if get(g_keys, key, false)
+            g_keys[key] = false
+            if head_dir != "left"
+                snake.dir_next = "right"
+            end
+        end
+    end
+
     if get(g_keys, GLFW.KEY_ESCAPE, false)
         GLFW.SetWindowShouldClose(window, true)
     end
