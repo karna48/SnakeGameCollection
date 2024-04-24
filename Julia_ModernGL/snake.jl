@@ -1,6 +1,7 @@
 
+# playing sound in other thread did not work!
+# GLFW.GetKey did not work for me therefore g_keys::Dict
 # uses geometry shader
-# GLFW.GetKey did not work for me
 
 import Images
 using ModernGL, GeometryTypes, GLAbstraction, GLFW
@@ -22,6 +23,7 @@ const SPRITE_WIDTH = SPRITE_SCALE * SPRITE_IMG_WIDTH
 const SPRITE_HEIGHT = SPRITE_SCALE * SPRITE_IMG_HEIGHT
 const ROWS = div(RESOLUTION[2], SPRITE_HEIGHT)
 const COLUMNS = div(RESOLUTION[1], SPRITE_WIDTH)
+const ALL_SQUARES_SET = Set((i, j) for i in 1:ROWS, j in 1:COLUMNS)
 
 const IMG_NAMES = [
     "head_up" "head_right" "head_down" "head_left";
@@ -30,7 +32,9 @@ const IMG_NAMES = [
     "vertical" "horizontal" "rabbit" "grass"
 ]
 
-const g_img_rc = Dict(IMG_NAMES[i, j] => (i, j) for i in 1:size(IMG_NAMES, 1), j in 1:size(IMG_NAMES, 2))
+const g_img_rc = Dict(
+    IMG_NAMES[i, j] => (i, j) 
+    for i in 1:size(IMG_NAMES, 1), j in 1:size(IMG_NAMES, 2))
 
 function img_idx(name)
     i, j = g_img_rc[name]
@@ -74,7 +78,14 @@ function reset_snake()
     snake.move_t_rem = 3
 end
 
+function place_rabbit()
+    snake_squares = Set((sp.row, sp.col) for sp in snake.parts)
+    free_squares = setdiff(ALL_SQUARES_SET, snake_squares)
+    rabbit.row, rabbit.col = rand(free_squares)
+end
+
 reset_snake()
+place_rabbit()
 
 g_keys = Dict()  # GLFW.GetKey did not work for me
 
@@ -91,11 +102,64 @@ end
 
 include("init_utils.jl")
 
-
-
+t_last = time()
 while !GLFW.WindowShouldClose(window)
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+    t_now = time()
+    dt = t_now - t_last
+    global t_last = t_now
 
+    snake.move_t_rem -= dt
+    if snake.move_t_rem <= 0
+        snake.move_t_rem = snake.move_t
+        head_dir = snake.dir_next
+        old_head = snake.parts[1]
+        row, col = old_head.row, old_head.col
+        if head_dir == "left"
+            col -= 1
+        elseif head_dir == "right"
+            col += 1
+        elseif head_dir == "up"
+            row += 1
+        elseif head_dir == "down"
+            row -= 1
+        else
+            error("unknown snake direction")
+        end
+        
+        row = mod(row, 0 : ROWS-1)
+        col = mod(col, 0 : COLUMNS-1)
+      
+        if head_dir == old_head.dir
+            img_name = if (head_dir in ("left", "right")) "horizontal" else "vertical" end
+        elseif old_head.dir == "down"
+            img_name = if head_dir == "left" "turn_4" else "turn_1" end
+        elseif old_head.dir == "up"
+            img_name = if head_dir == "left" "turn_3" else "turn_2" end
+        elseif old_head.dir == "left"
+            img_name = if head_dir == "up" "turn_1" else "turn_2" end
+        elseif old_head.dir == "right"
+            img_name = if head_dir == "up" "turn_4" else "turn_3" end
+        end
+        old_head.sprite_name = img_name
+
+        insert!(snake.parts, 1, SnakePart(row, col, head_dir, "head_"*head_dir))
+        
+        rabbit_eaten = row == rabbit.row && col == rabbit.col
+        if !rabbit_eaten
+            pop!(snake.parts)
+            snake.parts[length(snake.parts)].dir = "tail_"*snake.parts[length(snake.parts)-1].dir
+        else
+            snake.move_t -= 0.005
+            if snake.move_t < 0.01
+                snake.move_t = 0.01
+            end
+            # TODO: play(sound_eat): why it freezes the thread????
+            @Threads.spawn load_play(joinpath(common_data_dir, "eat.wav"))
+            place_rabbit()
+        end
+    end
+
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
     resize!(points, ROWS*COLUMNS)
     push!(points, (rabbit.col*SPRITE_WIDTH, rabbit.row*SPRITE_HEIGHT, img_idx("rabbit")))
     for sp in snake.parts
@@ -142,6 +206,5 @@ while !GLFW.WindowShouldClose(window)
         snake.parts[1].col += 1
         g_keys[GLFW.KEY_X] = false
     end
-    
 end
 GLFW.DestroyWindow(window)
