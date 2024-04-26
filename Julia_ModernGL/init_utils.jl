@@ -8,6 +8,9 @@ function ortho_projection(left::Float32, right::Float32, bottom::Float32, top::F
     )
 end
 
+window = GLFW.Window(name="Snake game (Julia, ModernGL, GLAbstraction)", resolution=RESOLUTION)
+GLA.set_context!(window)
+
 projection = ortho_projection(0f0, convert(Float32, RESOLUTION[1]), 0f0, convert(Float32, RESOLUTION[2]), -1f0, 0f0)
 
 v_shader = GLA.Shader(GL_VERTEX_SHADER, read("shader_vertex.glsl"))
@@ -15,9 +18,10 @@ f_shader = GLA.Shader(GL_FRAGMENT_SHADER, read("shader_fragment.glsl"))
 g_shader = GLA.Shader(GL_GEOMETRY_SHADER, read("shader_geom.glsl"))
 shader_program = GLA.Program(v_shader, g_shader, f_shader)
 
+snake_img = Images.load(joinpath(common_data_dir, "Snake.png"))
 texture = GLA.Texture(collect(snake_img'), minfilter=:nearest)
 
-buffers = GLA.generate_buffers(shader_program, GLA.GEOMETRY_DIVISOR, pos_img = points)
+buffers = GLA.generate_buffers(shader_program, GLA.GEOMETRY_DIVISOR, pos_img = Vector{Point3f0}())
 vao = GLA.VertexArray(buffers, GL_POINTS)
 
 GLA.bind(shader_program)
@@ -29,6 +33,7 @@ glClearColor( 0.7, 0.7, 1, 0 )
 glEnable(GL_BLEND)
 glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
+g_keys = Dict()  # GLFW.GetKey did not work for me
 
 GLFW.SetKeyCallback(window, (_, key, scancode, action, mods) -> begin
     if action == GLFW.PRESS
